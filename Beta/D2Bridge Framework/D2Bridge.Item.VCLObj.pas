@@ -434,11 +434,11 @@ begin
  {$ENDIF}
    or SameText(OverrideVCL(Item.ClassType).ClassName, 'TDBText') then
  begin
-  if Pos('white-space: pre-line;', result) <= 0 then
+  if Pos('white-space:pre-line;', result) <= 0 then
   begin
    if result <> '' then
     Result:= Result + ' ';
-   Result:= Result + 'white-space: pre-line;';
+   Result:= Result + 'white-space:pre-line;';
   end;
  end;
 
@@ -516,13 +516,13 @@ begin
 {$IFDEF D2BRIDGE}
  if BaseClass.VCLStyles then
  begin
-  vCSSClasses:= '';
-  vHTMLStyle:= '';
+  vCSSClasses:= CSSClasses;
+  vHTMLStyle:= HTMLStyle;
 
   FVCLObjStyle.ProcessVCLStyles(vCSSClasses, vHTMLStyle);
 
-  CSSClasses:= Trim(' ' + CSSClasses + ' ' + vCSSClasses);
-  HTMLStyle:= Trim(' ' + HTMLStyle + ' ' + vHTMLStyle);
+  CSSClasses:= Trim(vCSSClasses);
+  HTMLStyle:= Trim(vHTMLStyle);
  end;
 {$ENDIF}
 end;

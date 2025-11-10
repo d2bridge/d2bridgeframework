@@ -121,7 +121,8 @@ type
 implementation
 
 uses
-  Prism.Util, Prism.Card.DataModel, D2Bridge.Util, Prism.Events, Prism.Forms;
+  Prism.Util, Prism.Card.DataModel, D2Bridge.Util, Prism.Events, Prism.Forms,
+  D2Bridge.Interfaces, D2Bridge.Item.VCLObj.Style;
 
 
 function TPrismCardGridDataModel.AlwaysInitialize: boolean;
@@ -232,23 +233,29 @@ end;
 
 procedure TPrismCardGridDataModel.InitCardPrismControls;
 var
- vPrismControl: IPrismControl;
+ vPrismControlIntf: IPrismControl;
+ vPrismControl: TPrismControl;
  vStringTemp: TStrings;
 begin
  try
   vStringTemp:= TStringList.Create;
 
-  for vPrismControl in FPrismControls do
+  for vPrismControlIntf in FPrismControls do
   begin
    vStringTemp.Clear;
+
+   vPrismControl:= vPrismControlIntf as TPrismControl;
+
    try
-//    if not vPrismControl.Initilized then
-    //vPrismControl.Initialize;
-    if (vPrismControl as TPrismControl) <> self then
+//    if not vPrismControlIntf.Initilized then
+    //vPrismControlIntf.Initialize;
+    if vPrismControl <> self then
     begin
-     (Form as TPrismForm).D2BridgeForm.DoInitPrismControl(vPrismControl as TPrismControl);
-     vPrismControl.UpdateServerControls(vStringTemp, true);
-     vPrismControl.ProcessHTML;
+     (Form as TPrismForm).D2BridgeForm.DoInitPrismControl(vPrismControl);
+     vPrismControl.DoInitializeVCLStyle;
+     vPrismControlIntf.UpdateServerControls(vStringTemp, true);
+
+     vPrismControlIntf.ProcessHTML;
     end;
    except
    end;

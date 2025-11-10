@@ -107,8 +107,8 @@ type
    FStoredVisible: Boolean;
    FNewVisible: Boolean;
    FStoredReadOnly: Boolean;
-   FFStoredVCLStyle: ID2BridgeItemVCLObjStyle;
    FNewReadOnly: Boolean;
+   FFStoredVCLStyle: ID2BridgeItemVCLObjStyle;
    function RefreshControl: Boolean;
    procedure SetVCLComponent(AComponent: TComponent); virtual;
    function GetVCLComponent: TComponent; virtual;
@@ -237,6 +237,7 @@ type
 
    //Abstract
    procedure Initialize; virtual;
+   procedure DoInitializeVCLStyle; virtual;
    function Initilized: boolean; virtual;
    function AlwaysInitialize: boolean; virtual;
    procedure ProcessHTML; virtual; abstract;
@@ -592,6 +593,21 @@ begin
 
 end;
 
+procedure TPrismControl.DoInitializeVCLStyle;
+begin
+ //VCL Style
+ if Assigned(D2BridgeItem) and Supports(D2BridgeItem, ID2BridgeItemVCLObj) then
+ begin
+  if Assigned((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle) then
+  begin
+   if not Assigned(FFStoredVCLStyle) then
+    FFStoredVCLStyle:= TD2BridgeItemVCLObjStyle.Create;
+
+   (FFStoredVCLStyle as TD2BridgeItemVCLObjStyle).Assign((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle as TPersistent);
+  end;
+ end;
+end;
+
 procedure TPrismControl.FormatHTMLControl(AHTMLText: String);
 var
  PosInit, PosEnd: Integer;
@@ -781,17 +797,7 @@ begin
   FStoredReadOnly:= ReadOnly;
   FStoredVisible:= Visible;
 
-  //VCL Style
-  if Assigned(D2BridgeItem) and Supports(D2BridgeItem, ID2BridgeItemVCLObj) then
-  begin
-   if Assigned((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle) then
-   begin
-    if not Assigned(FFStoredVCLStyle) then
-     FFStoredVCLStyle:= TD2BridgeItemVCLObjStyle.Create;
-
-    (FFStoredVCLStyle as TD2BridgeItemVCLObjStyle).Assign((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle as TPersistent);
-   end;
-  end;
+  DoInitializeVCLStyle;
  end;
 
  FStoredPlaceholder:= Placeholder;
@@ -1303,6 +1309,9 @@ begin
    if NewVCLStyle.FontSize <> FFStoredVCLStyle.FontSize then
    begin
     vVCLStyleChanged := true;
+
+    FHTMLCore:= HTMLAddItemFromStyle(FHTMLCore, 'font-size', StringReplace(FloatToStr(NewVCLStyle.FontSize / DefaultFontSize), ',', '.', []) +'rem');
+
     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.font-size = "' + StringReplace(FloatToStr(NewVCLStyle.FontSize / DefaultFontSize), ',', '.', []) +'rem;');
    end;
 
@@ -1343,9 +1352,16 @@ begin
    begin
     vVCLStyleChanged := true;
     if NewVCLStyle.Color <> D2Bridge.Item.VCLObj.Style.ColorNone then
+    begin
+     FHTMLCore:= HTMLAddItemFromStyle(FHTMLCore, 'background-color', D2Bridge.Util.ColorToHex(NewVCLStyle.Color));
+
      ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.backgroundColor = "' + D2Bridge.Util.ColorToHex(NewVCLStyle.Color) + '";')
-    else
+    end else
+    begin
+     FHTMLCore:= HTMLRemoveItemFromStyle(FHTMLCore, 'background-color');
+
      ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.backgroundColor = "";')
+    end;
    end;
 
    if NewVCLStyle.FontColor <> FFStoredVCLStyle.FontColor then

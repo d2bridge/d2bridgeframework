@@ -1051,36 +1051,42 @@ end;
   function ImageICOFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
   function ImageICOFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; AImagePosition: TD2BridgeCardImagePosition = D2BridgeCardImagePositionTop; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageTOPFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageTOPFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageTOPFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageTOPFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageBOTTOMFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageBOTTOMFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageBOTTOMFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageBOTTOMFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageLEFTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageLEFTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageLEFTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageLEFTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageRIGHTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageRIGHTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageRIGHTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageRIGHTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageFULLFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageFULLFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageFULLFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageFULLFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
 
   property Color: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetColor write SetColor;
@@ -1315,7 +1321,7 @@ end;
 
   procedure Default;
 
-  procedure ProcessVCLStyles(out CSSClasses: string; out HTMLStyle: string);
+  procedure ProcessVCLStyles(var CSSClasses, HTMLStyle: string);
 
   property FontSize: {$IFNDEF FMX}Integer{$ELSE}Single{$ENDIF} read GetFontSize write SetFontSize;
   property FontStyles: TFontStyles read GetFontStyles write SetFontStyles;
@@ -1770,9 +1776,12 @@ end;
    function GetDataSource: TDataSource;
    procedure SetDataFieldImagePath(AValue: String);
    function GetDataFieldImagePath: String;
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
 
    property DataSource: TDataSource read GetDataSource write SetDataSource;
    property DataFieldImagePath: String read GetDataFieldImagePath write SetDataFieldImagePath;
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
  end;
 {$ENDIF}
 
@@ -1920,7 +1929,7 @@ end;
    procedure FormGroup(LabeledEdit: TLabeledEdit; AValidationGroup: Variant; ARequired: Boolean; AColSize: string = 'col-auto'; AItemID: string = ''; AHTMLinLine: Boolean = false; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''); overload;
    {$ENDIF}
    //function PanelGroup: ID2BridgeItemHTMLPanelGroup; overload;
-   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = 'col'; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
+   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = ''; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
 //   function Row: ID2BridgeItemHTMLRow; overload;
    function Row(ACSSClass: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLRow;
    function HTMLDIV(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
@@ -1959,7 +1968,8 @@ end;
    function ImageFromLocal(APathFromImage: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
    function ImageFromTImage(ATImage: TImage; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
 {$IFNDEF FMX}
-   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage;
+   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
+   function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
 {$ENDIF}
    //Badge
    function BadgeText(ComponentLabel: TComponent; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLBadgeText; overload;
@@ -1969,22 +1979,38 @@ end;
    function BadgeButtonIndicator(ComponentButton: TComponent; ComponentLabel: TComponent; ACSSClassButton: String = ''; ACSSClassLabel: String = ''; AHTMLExtrasButton: String = ''; AHTMLExtrasLabel: String = ''; AHTMLStyleButton: String = ''; AHTMLStyleLabel: String = ''): ID2BridgeItemHTMLBadgeButton; overload;
    //Kanban
    function Kanban(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLKanban;
-   //ColSize
-   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
+   //Col Size
+   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
    function Col2(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
-   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
+   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   //Col Size Responsive
+   function Col(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col2(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col3(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
    //Markdown
    function MarkdownEditor(TextVCLItem: TComponent; AHeight: integer = 0; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLMarkDownEditor; overload;
 {$IFNDEF FMX}

@@ -14,14 +14,6 @@ Whatsapp: +55 17 99122-2543
 São Paulo - Brazil
 
 
-## Version
-Beta (LGPL 2.1 License)
-- D2Bridge Framework 2.5.55
-
-Stable
-- D2Bridge Framework 2.0.8
-
-
 ## Compatibility
 Editions:
 - All Delphi Editions (Community, Professional, Enterprise and Architect)
@@ -35,7 +27,7 @@ Delphi Version:
 - Delphi Sydney (10.4)
 - Delphi Alexandria (11.3)
 - Delphi Athens (12.0)
-- Delphi Athens (13.0)
+- Delphi Athens (12.0)
 
 Lazarus Version:
 - Lazarus 3.4
@@ -45,47 +37,21 @@ Lazarus Version:
 - Lazarus 4.2
 
 
-## Oficial Courses (PT-BR)
-D2Restaurant (D2Bridge with 100% Lazarus Web) *Pre-Sale
-https://pay.hotmart.com/C102627254K
-
-D2Bridge + Horse (D2Stock Project)
-https://hotm.art/ntier
-
-D2Shop (D2Bridge Shop Project)
-https://pay.hotmart.com/B96084350T
-
-D2Checkin (D2Bridge with HTML Templates)
-https://pay.hotmart.com/Q94934370Y
-
-
-
 ## Repository SVN
 https://d2bridge.com.br/svn/d2bridge/trunk
 User: anonymous (no password)
 (use SVN Cliente - Tortoise)
 
+
 ## Repository GIT
 https://github.com/d2bridge/d2bridgeframework
 
 
-
-## Social networks and groups
-Youtube Oficial channel
-https://www.youtube.com/@talisjonatas
-
-Discord (English and PT-BR)
-https://discord.gg/WvHaWP6h9t
-
-Whatsapp (PT-BR)
-https://chat.whatsapp.com/Jz8ditsGyzl79eSI5tL5Cq
-
-Telegram (PT-BR)
-http://t.me/d2bridge
-
-Instagram
-https://www.instagram.com/d2bridgeframework
-
+## Download
+- Using SVN Cliente
+https://d2bridge.com.br/svn/d2bridge/trunk
+- Oficial Web Site
+https://www.d2bridge.com.br
 
 
 ## Installation
@@ -95,6 +61,15 @@ https://www.instagram.com/d2bridgeframework
     
 ## Support
 Use the D2Bridge Discord channel for community support
+
+D2Bridge Discord Channel (English and Portuguese)
+https://discord.gg/WvHaWP6h9t
+
+Whatsapp group (On Portuguese only)
+https://chat.whatsapp.com/Jz8ditsGyzl79eSI5tL5Cq
+
+YouTube channel (only in Portuguese at the moment *use subtitles to translate)
+https://www.youtube.com/@talisjonatas
 
 For consultancy or paid support contact https://www.d2bridge.com.br or email: talisjonatas@me.com or Whatsapp: +55 17 99122-2543
 

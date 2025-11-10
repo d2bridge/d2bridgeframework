@@ -12,12 +12,12 @@ type
   T<CLASS_ID> = class(<CLASSINHERITED>)
   private
     { Private declarations }
-  public
-    { Public declarations }
   protected
     procedure ExportD2Bridge; override;
     procedure InitControlsD2Bridge(const PrismControl: TPrismControl); override;
-    procedure RenderD2Bridge(const PrismControl: TPrismControl; var HTMLControl: string); override;
+    procedure RenderD2Bridge(const PrismControl: TPrismControl; var HTMLControl: string); override;		
+  public
+    { Public declarations }
   end;
 
 function <CLASS_ID>:T<CLASS_ID>;

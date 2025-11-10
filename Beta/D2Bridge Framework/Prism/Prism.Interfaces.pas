@@ -1217,7 +1217,12 @@ type
 
  IPrismDBImage = interface(IPrismControl)
   ['{25E1C8A9-B79E-4E16-A03D-E4596D143EBA}']
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
+
    function DataWare: TPrismDataLinkField;
+
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
  end;
 {$ENDIF}
 

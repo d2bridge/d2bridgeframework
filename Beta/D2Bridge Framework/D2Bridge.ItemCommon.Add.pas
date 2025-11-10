@@ -79,7 +79,7 @@ type
    procedure FormGroup(LabeledEdit: TLabeledEdit; AColSize: string = 'col-auto'; AItemID: string = ''; AHTMLinLine: Boolean = false; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''); overload;
    procedure FormGroup(LabeledEdit: TLabeledEdit; AValidationGroup: Variant; ARequired: Boolean; AColSize: string = 'col-auto'; AItemID: string = ''; AHTMLinLine: Boolean = false; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''); overload;
 {$ENDIF}
-   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = 'col'; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
+   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = ''; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
    function HTMLDIV(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
    function Tabs(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLTabs;
    function Accordion(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLAccordion;
@@ -115,7 +115,8 @@ type
    function ImageFromLocal(PathFromImage: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
    function ImageFromTImage(ATImage: TImage; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
 {$IFNDEF FMX}
-   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage;
+   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
+   function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
 {$ENDIF}
    //Badge
    function BadgeText(ComponentLabel: TComponent; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLBadgeText; overload;
@@ -126,21 +127,37 @@ type
    //Kanban
    function Kanban(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLKanban;
    //Col Size
-   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col2(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
+   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col2(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   //Col Size Responsive
+   function Col(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col2(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col3(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
    //MarkDown Editor
    function MarkdownEditor(TextVCLItem: TComponent; AHeight: integer = 0; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLMarkDownEditor; overload;
 {$IFNDEF FMX}
@@ -517,6 +534,16 @@ function TItemAdd.ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath,
   ACSSClass, AItemID, AHTMLExtras,
   AHTMLStyle: String): ID2BridgeItemHTMLDBImage;
 begin
+ Result := ImageFromDB('', ADataSource, ADataFieldImagePath, ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle);
+end;
+{$ENDIF}
+
+
+{$IFNDEF FMX}
+function TItemAdd.ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle: String): ID2BridgeItemHTMLDBImage;
+begin
  Result := TD2BridgeItemHTMLDBImage.Create(TD2BridgeClass(FBaseClass));
 
  if AItemID = '' then
@@ -529,11 +556,13 @@ begin
  Result.HTMLStyle:= AHTMLStyle;
 
  Result.DataSource:= ADataSource;
- Result.DataFieldImagePath:= ADataFieldImagePath;
+ Result.DataFieldImagePath:= ADataFieldImageFile;
+ Result.ImageFolder:= AImageFolder;
 
  FD2BridgeItems.Add(Result);
 end;
 {$ENDIF}
+
 
 function TItemAdd.ImageFromLocal(PathFromImage: string; ACSSClass: String;
   AItemID: string; AHTMLExtras: String; AHTMLStyle: String
@@ -613,7 +642,10 @@ end;
 //ColSize
 function TItemAdd.Col(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.Col + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.Col);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -621,7 +653,10 @@ end;
 
 function TItemAdd.ColAuto(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colauto + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colauto);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -629,7 +664,10 @@ end;
 
 function TItemAdd.ColFull(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colfull + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colfull);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -637,7 +675,10 @@ end;
 
 function TItemAdd.Col1(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize1 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' '+ D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize1);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -645,7 +686,10 @@ end;
 
 function TItemAdd.Col2(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize2 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize2);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -653,7 +697,10 @@ end;
 
 function TItemAdd.Col3(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize3 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize3);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -661,7 +708,10 @@ end;
 
 function TItemAdd.Col4(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize4 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize4);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -669,7 +719,10 @@ end;
 
 function TItemAdd.Col5(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize5 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize5);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -677,7 +730,10 @@ end;
 
 function TItemAdd.Col6(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize6 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize6);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -685,7 +741,10 @@ end;
 
 function TItemAdd.Col7(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize7 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize7);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -693,7 +752,10 @@ end;
 
 function TItemAdd.Col8(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize8 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize8);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -701,7 +763,10 @@ end;
 
 function TItemAdd.Col9(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize9 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize9);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -709,7 +774,10 @@ end;
 
 function TItemAdd.Col10(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize10 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize10);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -717,7 +785,10 @@ end;
 
 function TItemAdd.Col11(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize11 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize11);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -725,7 +796,10 @@ end;
 
 function TItemAdd.Col12(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
 begin
- ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize12 + ' '+D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+ ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colinline+' d2bridgecol');
+
+ if (POS('col-', ACSSClass) <= 0) and (ACSSClass <> 'col') then
+  ACSSClass:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colsize12);
 
  Result:= HTMLDIV(ACSSClass, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
  Result.IsCol:= true;
@@ -815,7 +889,7 @@ begin
  FD2BridgeItems.Add(Result);
 end;
 
-function TItemAdd.PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = 'col'; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
+function TItemAdd.PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = ''; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
 begin
  Result:= TD2BridgeItemHTMLPanelGroup.Create(TD2BridgeClass(FBaseClass));
 
@@ -1246,5 +1320,170 @@ begin
 end;
 {$ENDIF}
 
+
+function TItemAdd.Col(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + 'col');
+
+ result:= Col(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col1(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col1);
+
+ result:= Col1(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col10(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col10);
+
+ result:= Col10(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col11(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col11);
+
+ result:= Col11(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col12(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col12);
+
+ result:= Col12(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col2(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col2);
+
+ result:= Col2(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col3(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col3);
+
+ result:= Col3(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col4(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col4);
+
+ result:= Col4(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col5(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col4);
+
+ result:= Col4(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col6(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col6);
+
+ result:= Col6(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col7(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col7);
+
+ result:= Col7(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col8(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col8);
+
+ result:= Col8(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.Col9(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.col9);
+
+ result:= Col9(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.ColAuto(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colauto);
+
+ result:= ColAuto(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
+
+function TItemAdd.ColFull(AAutoResponsive: boolean; ACSSClass, AItemID,
+  AHTMLExtras, AHTMLStyle, AHTMLTag: String): ID2BridgeItemHTMLRow;
+var
+ vCSSCallCol: string;
+begin
+ if not AAutoResponsive then
+  vCSSCallCol:= Trim(ACSSClass + ' ' + D2Bridge.HTML.CSS.Col.colfull);
+
+ result:= ColFull(vCSSCallCol, AItemID, AHTMLExtras, AHTMLStyle, AHTMLTag);
+end;
 
 end.

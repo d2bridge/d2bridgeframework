@@ -994,6 +994,11 @@ img.image-background-fullsize[src=""] {
     object-fit: cover; 
 }
 
+.d2bridgecol .col-img-square {
+    width: 100%; 
+    height: auto; 
+    object-fit: cover; 
+}
 
 
 

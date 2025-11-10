@@ -86,7 +86,8 @@ procedure TD2BridgeItemHTMLPanelGroup.BeginReader;
 begin
  with BaseClass.HTML.Render.Body do
  begin
-  Add('<div class="'+ColSize+' pt-2">');
+  if FColSize <> '' then
+   Add('<div class="'+ColSize+' pt-2">');
   Add('<div class="expanel '+CSSClasses+'" style="'+HTMLStyle+'" '+HTMLExtras+' id="' + ItemID + '">');
   Add('<div class="expanel-heading">');
   Add('<h3 class="expanel-title">'+Title+'</h3>');
@@ -101,7 +102,7 @@ begin
 
  FD2BridgeItems:= TD2BridgeItems.Create(BaseClass);
 
- FColSize:= 'col-xl-auto';
+ FColSize:= '';
  CSSClasses:= BaseClass.CSSClass.PanelColor.default;
 
  FD2BridgeItem.OnBeginReader:= BeginReader;
@@ -136,13 +137,17 @@ begin
  begin
   add('</div>');
   add('</div>');
-  add('</div>');
+  if FColSize <> '' then
+   add('</div>');
  end;
 end;
 
 function TD2BridgeItemHTMLPanelGroup.GetColSize: string;
 begin
  Result:= FColSize;
+
+ if Result = '' then
+  Result:= 'col';
 end;
 
 function TD2BridgeItemHTMLPanelGroup.GetInLine: Boolean;

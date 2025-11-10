@@ -62,6 +62,7 @@ function HTMLRemoveItemFromClass(AHTML, ItemREMOVE: String): String;
 function HTMLAddItemFromStyle(AHTML, ItemADD, ItemAValue: String): String;
 function HTMLRemoveItemFromStyle(AHTML, ItemREMOVE: String; ItemREMOVEValue: string = ''): String;
 function ExistForClass(ACSSClass, ASearch: String): boolean;
+function AddItemFromStyle(AStyles, ItemADD, ItemAValue: String): String;
 
 function ConvertHTMLKeyToVK(KeyName: string): Word;
 
@@ -460,6 +461,66 @@ begin
 
  if (Pos(ASearch, ACSSClass) = 1) or (Pos(' '+ASearch+'', ACSSClass) > 1) then
   result:= true;
+end;
+
+function AddItemFromStyle(AStyles, ItemADD, ItemAValue: String): String;
+var
+ PosInit, PosEnd: integer;
+ ItemPosInit, ItemPosEnd: integer;
+ StyleText: string;
+ ItemStyleText: string;
+ vExistPos: boolean;
+begin
+ ItemStyleText:= '';
+ ItemPosInit:= -1;
+
+ StyleText:= Trim(AStyles);
+
+ repeat
+  StyleText:= StringReplace(StyleText, '; ', ';', [rfReplaceAll]);
+  vExistPos:= Pos('; ', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ' ;', ';', [rfReplaceAll]);
+  vExistPos:= Pos(' ;', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ': ', ':', [rfReplaceAll]);
+  vExistPos:= Pos(': ', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ' :', ':', [rfReplaceAll]);
+  vExistPos:= Pos(' :', StyleText) > 0;
+ until not vExistPos;
+
+ if StyleText <> '' then
+  if Copy(StyleText, Length(StyleText)) <> ';' then
+   StyleText:= StyleText + ';';
+
+ if (Pos(AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) = 1) then
+  ItemPosInit:= Pos(AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) + Length(ItemADD+':')
+ else
+  if (Pos(';'+AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) >= 1) then
+   ItemPosInit:= Pos(';'+AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText));
+
+ if ItemPosInit >= 0 then
+ begin
+  ItemPosEnd:= Pos(';', AnsiUpperCase(Copy(StyleText, ItemPosInit + 1)));
+  if ItemPosEnd <= 0 then
+   ItemPosEnd:= Pos(';', AnsiUpperCase(Copy(StyleText, ItemPosInit)));
+  ItemStyleText:= Copy(StyleText, ItemPosInit + 1, ItemPosEnd);
+
+  StyleText:= StringReplace(StyleText, ItemStyleText, '', [rfReplaceAll, rfIgnoreCase]);
+ end;
+
+ ItemStyleText:= ItemADD + ':' + ItemAValue;
+ if not ItemStyleText.EndsWith(';') then
+  ItemStyleText:= ItemStyleText + ';';
+
+ StyleText:= StyleText + ItemStyleText;
+
+ //result:= Copy(AStyles, 1, PosInit-1) + StyleText + Copy(AStyles, PosInit + PosEnd -1);
+ result:= StyleText;
 end;
 
 function ConvertHTMLKeyToVK(KeyName: string): Word;

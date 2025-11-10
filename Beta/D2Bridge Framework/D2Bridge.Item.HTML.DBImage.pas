@@ -51,6 +51,8 @@ type
    function GetDataSource: TDataSource;
    procedure SetDataFieldImagePath(AValue: String);
    function GetDataFieldImagePath: String;
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
   public
    constructor Create(AOwner: TD2BridgeClass); override;
    destructor Destroy; override;
@@ -65,6 +67,7 @@ type
    property BaseClass;
    property DataSource: TDataSource read GetDataSource write SetDataSource;
    property DataFieldImagePath: String read GetDataFieldImagePath write SetDataFieldImagePath;
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
   end;
 
 
@@ -125,6 +128,11 @@ begin
  Result:= PrismControl.DataWare.DataSource;
 end;
 
+function TD2BridgeItemHTMLDBImage.GetImageFolder: String;
+begin
+ result:= PrismControl.ImageFolder;
+end;
+
 procedure TD2BridgeItemHTMLDBImage.PreProcess;
 begin
 
@@ -160,6 +168,11 @@ end;
 procedure TD2BridgeItemHTMLDBImage.SetDataSource(const Value: TDataSource);
 begin
  PrismControl.DataWare.DataSource:= Value;
+end;
+
+procedure TD2BridgeItemHTMLDBImage.SetImageFolder(AValue: String);
+begin
+ PrismControl.ImageFolder:= AValue;
 end;
 
 {$ELSE}

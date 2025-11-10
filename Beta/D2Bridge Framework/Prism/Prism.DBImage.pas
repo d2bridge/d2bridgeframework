@@ -48,9 +48,12 @@ type
    FRefreshData: Boolean;
    FStoredText: string;
    FDataLinkField: TPrismDataLinkField;
+   FImageFolder: string;
    procedure UpdateData; override;
    function ConvertLocalToBase64(AImageLocal: string): string;
    function ImageToSrc: string;
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
   protected
    procedure Initialize; override;
    procedure ProcessHTML; override;
@@ -63,6 +66,8 @@ type
    destructor Destroy; override;
 
    function DataWare: TPrismDataLinkField;
+
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
  end;
 
 
@@ -83,6 +88,10 @@ var
 begin
  try
   Result := '';
+
+  if FImageFolder <> '' then
+   AImageLocal:= IncludeTrailingPathDelimiter(FImageFolder) + ExcludeTrailingBackslash(AImageLocal);
+
   if not FileExists(AImageLocal) then
     Exit;
 
@@ -123,6 +132,8 @@ begin
 
  FRefreshData:= false;
  FDataLinkField:= TPrismDataLinkField.Create(Self);
+
+ FImageFolder:= '';
 end;
 
 function TPrismDBImage.DataWare: TPrismDataLinkField;
@@ -140,6 +151,11 @@ end;
 function TPrismDBImage.GetEnableComponentState: Boolean;
 begin
  Result:= true;
+end;
+
+function TPrismDBImage.GetImageFolder: String;
+begin
+ result:= FImageFolder;
 end;
 
 function TPrismDBImage.ImageToSrc: string;
@@ -195,6 +211,11 @@ begin
  HTMLControl := HTMLControl + '/>';
 end;
 
+
+procedure TPrismDBImage.SetImageFolder(AValue: String);
+begin
+ FImageFolder:= AValue;
+end;
 
 procedure TPrismDBImage.UpdateData;
 begin

@@ -204,8 +204,9 @@ procedure TD2BridgeItemHTMLRow.BeginReader;
 var
  HTMLText: String;
  vCSSClass: string;
- I: integer;
+ I, J: integer;
  vJustRow: boolean;
+ vExistFormGroup: boolean;
  vRow: ID2BridgeItemHTMLRow;
 begin
  if HTMLTagRow = '' then
@@ -227,6 +228,7 @@ begin
   if FD2BridgeItems.Count > 1 then
   begin
    vJustRow:= true;
+   vExistFormGroup:= false;
 
    for I := 0 to Pred(FD2BridgeItems.Count) do
    begin
@@ -244,8 +246,39 @@ begin
      end else
       vRow:= nil;
     end;
-
    end;
+
+
+   for I := 0 to Pred(FD2BridgeItems.Count) do
+   begin
+    if (not Supports(FD2BridgeItems.Items.Items[I], ID2BridgeItemHTMLRow, vRow)) then
+    begin
+     continue;
+    end;
+
+    if Supports(FD2BridgeItems.Items.Items[I], ID2BridgeItemHTMLFormGroup) then
+    begin
+     vExistFormGroup:= true;
+     break;
+    end else
+    if vRow.IsCol and (vRow.Items.Count > 0) then
+    begin
+     for J := 0 to Pred(vRow.Items.Count) do
+     begin
+      if Supports(vRow.Items.Items[J], ID2BridgeItemHTMLFormGroup) then
+      begin
+       vExistFormGroup:= true;
+       break;
+      end;
+     end;
+    end;
+   end;
+
+
+   if vExistFormGroup then
+    if POS('hasd2bridgeformgroup', vCSSClass) <= 0 then
+     vCSSClass:= Trim(vCSSClass + ' ' + 'hasd2bridgeformgroup');
+
 
    if vJustRow then
     vCSSClass:= StringReplace(vCSSClass, D2Bridge.HTML.CSS.Col.colinline, '', [rfReplaceAll]);

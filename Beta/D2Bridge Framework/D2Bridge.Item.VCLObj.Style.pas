@@ -73,7 +73,7 @@ type
 
   procedure Default;
 
-  procedure ProcessVCLStyles(out CSSClasses: string; out HTMLStyle: string);
+  procedure ProcessVCLStyles(var CSSClasses, HTMLStyle: string);
 
   property FontSize: {$IFNDEF FMX}Integer{$ELSE}Single{$ENDIF} read GetFontSize write SetFontSize;
   property FontStyles: TFontStyles read GetFontStyles write SetFontStyles;
@@ -102,7 +102,11 @@ const
 implementation
 
 Uses
- D2Bridge.HTML.CSS, D2Bridge.Util, D2Bridge.Manager, D2Bridge.ServerControllerBase;
+ D2Bridge.HTML.CSS,
+ D2Bridge.Util,
+ D2Bridge.Manager,
+ D2Bridge.ServerControllerBase,
+ Prism.Util;
 
 { TD2BridgeItemVCLObjStyle }
 
@@ -167,7 +171,7 @@ begin
  Result:= FFontStyles;
 end;
 
-procedure TD2BridgeItemVCLObjStyle.ProcessVCLStyles(out CSSClasses: string; out HTMLStyle: string);
+procedure TD2BridgeItemVCLObjStyle.ProcessVCLStyles(var CSSClasses, HTMLStyle: string);
 var
  vFontSize: Double;
 begin
@@ -182,9 +186,7 @@ begin
    begin
     vFontSize:= FontSize / DefaultFontSize; //11.5 is exactally size
 
-    if HTMLStyle <> '' then
-     HTMLStyle := HTMLStyle + ' ';
-    HTMLStyle := HTMLStyle + 'font-size: '+ StringReplace(FloatToStr(vFontSize), ',', '.', []) +'rem;';
+    HTMLStyle:= AddItemFromStyle(HTMLStyle, 'font-size', StringReplace(FloatToStr(vFontSize), ',', '.', []) +'rem;');
    end;
   end;
  {$ENDREGION}
@@ -206,9 +208,7 @@ begin
  {$REGION 'Font Color'}
   if FontColor <> ColorNone then
   begin
-   if HTMLStyle <> '' then
-    HTMLStyle := HTMLStyle + ' ';
-   HTMLStyle := HTMLStyle + 'color: '+ D2Bridge.Util.ColorToHex(FontColor) + ';';
+   HTMLStyle:= AddItemFromStyle(HTMLStyle, 'color', D2Bridge.Util.ColorToHex(FontColor));
   end;
  {$ENDREGION}
 
@@ -229,9 +229,7 @@ begin
  {$REGION 'Color'}
   if Color <> ColorNone then
   begin
-   if HTMLStyle <> '' then
-    HTMLStyle := HTMLStyle + ' ';
-   HTMLStyle := HTMLStyle + 'background-color: '+ D2Bridge.Util.ColorToHex(Color) + ';';
+   HTMLStyle:= AddItemFromStyle(HTMLStyle, 'background-color', D2Bridge.Util.ColorToHex(Color));
   end;
  {$ENDREGION}
 end;

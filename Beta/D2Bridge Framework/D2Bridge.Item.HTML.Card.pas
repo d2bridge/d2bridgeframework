@@ -110,6 +110,7 @@ type
    function ImageFromTImage(AImagePosition: TD2BridgeCardImagePosition = D2BridgeCardImagePositionTop; Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
    function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; AImagePosition: TD2BridgeCardImagePosition = D2BridgeCardImagePositionTop; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; AImagePosition: TD2BridgeCardImagePosition = D2BridgeCardImagePositionTop; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   public
    constructor Create(AOwner: TD2BridgeClass; APrismControl: IPrismControl = nil); overload;
@@ -132,37 +133,43 @@ type
    function ImageICOFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageICOFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageICOFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageICOFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageICOFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
    function ImageTOPFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageTOPFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageTOPFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageTOPFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
    function ImageBOTTOMFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageBOTTOMFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageBOTTOMFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageBOTTOMFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
    function ImageLEFTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageLEFTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageLEFTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageLEFTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
    function ImageRIGHTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageRIGHTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageRIGHTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageRIGHTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
    function ImageFULLFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageFULLFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
    function ImageFULLFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-   function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+   function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+   function ImageFULLFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
 
    property Color: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetColor write SetColor;
@@ -397,6 +404,15 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageBOTTOMFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionBOTTOM, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
+
 function TD2BridgeItemHTMLCard.ImageBOTTOMFromLocal(LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
  Result:= ImageFromLocal(D2BridgeCardImagePositionBottom, LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle);
@@ -438,7 +454,6 @@ function TD2BridgeItemHTMLCard.ImageFULLFromDB(ADataSource: TDataSource;
 begin
  Result:= ImageFromDB(ADataSource, ADataFieldImagePath, D2BridgeCardImagePositionFull, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
 end;
-
 {$ENDIF}
 
 {$IFNDEF FMX}
@@ -447,6 +462,15 @@ function TD2BridgeItemHTMLCard.ImageICOFromDB(ADataSource: TDataSource;
   HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
  Result:= ImageFromDB(ADataSource, ADataFieldImagePath, D2BridgeCardImagePositionIco, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
+
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageFULLFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionFull, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
 end;
 {$ENDIF}
 
@@ -467,6 +491,14 @@ function TD2BridgeItemHTMLCard.ImageFULLFromURL(URLFromImage, AColSize,
 begin
  Result:= ImageFromURL(D2BridgeCardImagePositionFull, URLFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle);
 end;
+
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageICOFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionIco, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
 
 function TD2BridgeItemHTMLCard.ImageICOFromLocal(LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
@@ -489,6 +521,15 @@ function TD2BridgeItemHTMLCard.ImageLEFTFromDB(ADataSource: TDataSource;
   HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
  Result:= ImageFromDB(ADataSource, ADataFieldImagePath, D2BridgeCardImagePositionLEFT, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
+
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageLEFTFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionLEFT, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
 end;
 {$ENDIF}
 
@@ -516,6 +557,15 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageRIGHTFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionRIGHT, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
+
 function TD2BridgeItemHTMLCard.ImageRIGHTFromLocal(LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
  Result:= ImageFromLocal(D2BridgeCardImagePositionRight, LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle);
@@ -540,6 +590,15 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageTOPFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile, ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
+ Result:= ImageFromDB(AImageFolder, ADataSource, ADataFieldImageFile, D2BridgeCardImagePositionTOP, ACSSClass, AColSize, HTMLExtras, HTMLStyle);
+end;
+{$ENDIF}
+
 function TD2BridgeItemHTMLCard.ImageTOPFromLocal(LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
  Result:= ImageFromLocal(D2BridgeCardImagePositionTOP, LocalFromImage, AColSize, ACSSClass, HTMLExtras, HTMLStyle);
@@ -561,8 +620,29 @@ function TD2BridgeItemHTMLCard.ImageFromDB(ADataSource: TDataSource;
   ACSSClass, AColSize, HTMLExtras,
   HTMLStyle: String): ID2BridgeItemHTMLCardImage;
 begin
+ result:=
+  ImageFromDB(
+   '',
+   ADataSource,
+   ADataFieldImagePath,
+   AImagePosition,
+   ACSSClass,
+   AColSize,
+   HTMLExtras,
+   HTMLStyle
+  );
+end;
+{$ENDIF}
+
+{$IFNDEF FMX}
+function TD2BridgeItemHTMLCard.ImageFromDB(AImageFolder: string;
+  ADataSource: TDataSource; ADataFieldImageFile: string;
+  AImagePosition: TD2BridgeCardImagePosition; ACSSClass, AColSize,
+  HTMLExtras, HTMLStyle: String): ID2BridgeItemHTMLCardImage;
+begin
  FCardImage.ImageDB.DataSource:= ADataSource;
- FCardImage.ImageDB.DataFieldImagePath:= ADataFieldImagePath;
+ FCardImage.ImageDB.DataFieldImagePath:= ADataFieldImageFile;
+ FCardImage.ImageDB.ImageFolder:= AImageFolder;
 
  if AColSize <> '' then
   FCardImage.ColSize:= AColSize;
