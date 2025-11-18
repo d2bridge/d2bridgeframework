@@ -1,7 +1,0 @@
-object PrismSessionBase: TPrismSessionBase
-  OldCreateOrder = False
-  Height = 336
-  HorizontalOffset = 817
-  VerticalOffset = 338
-  Width = 726
-end

@@ -1,7 +1,0 @@
-object PrismServerFunctions: TPrismServerFunctions
-  OldCreateOrder = False
-  Height = 368
-  HorizontalOffset = 721
-  VerticalOffset = 329
-  Width = 694
-end

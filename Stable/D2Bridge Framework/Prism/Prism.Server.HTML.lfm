@@ -1,7 +1,0 @@
-object PrismServerHTML: TPrismServerHTML
-  OldCreateOrder = False
-  Height = 432
-  HorizontalOffset = 763
-  VerticalOffset = 318
-  Width = 772
-end
