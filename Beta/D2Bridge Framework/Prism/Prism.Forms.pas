@@ -781,8 +781,6 @@ begin
   end;
  end;
 
- UpdateControls;
-
 end;
 procedure TPrismForm.OnBeforePageLoad;
 begin

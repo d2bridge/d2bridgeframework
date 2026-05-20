@@ -134,7 +134,10 @@ begin
     if (APrismForm.Controls[I].Events.Item(Z).AutoPublishedEvent) or
        (APrismForm.Controls[I].Events.Item(Z).EventType in [EventOnKeyDown, EventOnKeyUp, EventOnKeyPress]) then
     begin
-     add('_EV'+AnsiUpperCase(APrismForm.Controls[I].NamePrefix) + '.addEventListener("' + EventJSName(APrismForm.Controls[I].Events.Item(Z).EventType) + '", function(event) {');
+     if APrismForm.Controls[I].Events.Item(Z).EventType = EventOnChange then
+      add('$(_EV'+AnsiUpperCase(APrismForm.Controls[I].NamePrefix)+').on("'+EventJSName(APrismForm.Controls[I].Events.Item(Z).EventType)+'", function(event) {')
+     else
+      add('_EV'+AnsiUpperCase(APrismForm.Controls[I].NamePrefix) + '.addEventListener("' + EventJSName(APrismForm.Controls[I].Events.Item(Z).EventType) + '", function(event) {');
 
      //checkRequired
      if (APrismForm.Controls[I].NeedCheckValidation) then
@@ -483,7 +486,7 @@ begin
   if Assigned((vSession.ActiveForm as TPrismForm).OnProcessHTML) then
   (vSession.ActiveForm as TPrismForm).OnProcessHTML((vSession.ActiveForm as TPrismForm), HTMLText);
 
-  //Chama o Inicio da Tradução
+  //Chama o Inicio da Traduï¿½ï¿½o
   (vSession.ActiveForm as TPrismForm).DoBeginTranslate;
 
   //Part I
@@ -492,8 +495,8 @@ begin
 
   //Processa $prismbody
   HTMLBodyText:= TD2BridgeClass(vSession.D2BridgeBaseClassActive).HTML.Render.Body.Text;
-  //Retirado a Parte I porque quando usa template mas não tem os elementos declarados
-  //ao entrar uma segunda vez os elementos não atualizam
+  //Retirado a Parte I porque quando usa template mas nï¿½o tem os elementos declarados
+  //ao entrar uma segunda vez os elementos nï¿½o atualizam
   //Part I - Processa o Body
   //Session.ActiveForm.ProcessControlsToHTML(HTMLBodyText);
   HTMLText:= StringReplace(HTMLText, '$prismbody', HTMLBodyText, [rfIgnoreCase]);
@@ -528,7 +531,7 @@ begin
   //Processa as CallBack TAGs HTML {{Texto}}
   vSession.ActiveForm.ProcessCallBackTagHTML(HTMLText);
 
-  //FIX - Corrige a renderização do GridDataModel
+  //FIX - Corrige a renderizaï¿½ï¿½o do GridDataModel
   //Session.ActiveForm.ProcessControlsToHTML(HTMLText);
 
   //Translate
@@ -578,7 +581,7 @@ end;
 
 Procedure TPrismServerHTMLHeaders.LoadPageHTMLFromSession(const Request: TPrismHTTPRequest; Response: TPrismHTTPResponse; Session: TPrismSession);
 begin
- //Obrigatório rodar dentro da Thread
+ //Obrigatï¿½rio rodar dentro da Thread
  Session.ExecThread(True,
   Exec_LoadPageHTMLFromSession,
   TValue.From<TPrismHTTPRequest>(Request),
