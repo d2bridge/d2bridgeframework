@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -70,6 +76,7 @@ type
    FUUID: String;
    FCallBackID: String;
    FPushID: string;
+   FAuthID: string;
    FCreateDate: TDateTime;
    FD2BridgeInstance: TObject;
    FPrismBaseClass: IPrismBaseClass;
@@ -102,6 +109,7 @@ type
    function GetUUID: string;
    function GetCallBackID: string;
    function GetPushID: string;
+   function GetAuthID: string;
    Function GetActiveForm: IPrismForm;
    function GetD2BridgeForms: TList<TObject>;
    function GetCallBacks: IPrismCallBacks;
@@ -247,6 +255,7 @@ type
    property UUID: string read GetUUID;
    property CallBackID: string read GetCallBackID;
    property PushID: string read GetPushID;
+   property AuthID: string read GetAuthID;
    property ActiveForm: IPrismForm read GetActiveForm;
    property D2BridgeForms: TList<TObject> read GetD2BridgeForms;
    property D2BridgeInstance: TObject read GetD2BridgeInstance;
@@ -265,6 +274,7 @@ const
  SizeUUID = 12;
  SizeCallBackID = 9;
  SizePushID = 16;
+ SizeAuthID = 19;
 
 implementation
 
@@ -415,6 +425,7 @@ begin
    FUUID:= GenerateRandomString(SizeUUID);
    FCallBackID:= GenerateRandomNumber(SizeCallBackID);
    FPushID:= GenerateRandomString(SizePushID);
+   FAuthID:= GenerateRandomString(SizeAuthID);
    FCreateDate:= now;
 
 {$IFDEF D2BRIDGE}
@@ -532,6 +543,12 @@ end;
 
 procedure TPrismSession.Close(ACreateNewSession: Boolean = false);
 begin
+ if not IsD2BridgeContext then
+ begin
+  Application.Terminate;
+  exit;
+ end;
+
  if FDestroying then
   Exit;
 
@@ -1233,6 +1250,11 @@ begin
   Result:= (TD2BridgeClass(D2BridgeBaseClassActive).Form as TPrismForm);
 end;
 
+function TPrismSession.GetAuthID: string;
+begin
+ result:= FAuthID;
+end;
+
 function TPrismSession.GetLanguageNav: TD2BridgeLang;
 begin
  Result:= FLanguageNav;
@@ -1437,12 +1459,23 @@ var
   vD2Bridge: TD2BridgeClass;
   vD2BridgeForm: TD2BridgeForm;
   vButtons: TMsgDlgButtons;
-  vMod10: integer;
+  vMod10, vIcon: integer;
+  vDlgType: TMsgDlgType;
 begin
  {$IFDEF D2BRIDGE}
   vMod10:= ExtractHexValue(Flags) mod 10;
   vD2Bridge:= TD2BridgeClass(D2BridgeBaseClassActive);
   vD2BridgeForm:= TD2BridgeForm(TD2BridgeClass(D2BridgeBaseClassActive).FormAOwner);
+  vIcon  := Flags and $000000F0;
+
+  case vIcon of
+    MB_ICONERROR:       vDlgType := mtError;
+    MB_ICONQUESTION:    vDlgType := mtConfirmation;
+    MB_ICONWARNING:     vDlgType := mtWarning;
+    MB_ICONINFORMATION: vDlgType := mtInformation;
+  else
+    vDlgType := mtCustom;
+  end;
 
   //Process vMod10
   if vMod10 = MB_OK then
@@ -1465,7 +1498,7 @@ begin
   else
    vButtons:= [TMsgDlgBtn.MBOk];
 
-  Result:= vD2BridgeForm.MessageDlg(Text, TMsgDlgType.mtInformation, vButtons, 0);
+  Result:= vD2BridgeForm.MessageDlg(Text, vDlgType, vButtons, 0);
  {$ELSE}
    Result:= Forms.Application.MessageBox(Text, Caption, Flags);
  {$ENDIF}
@@ -1485,8 +1518,8 @@ end;
 
 procedure TPrismSession.OnTimerObserver;
 var
- vParamTimeOut, vParamIdleTimeOut, vParamHeatBeatTime, vParamWaitIdleResponse: integer;
- vLastHeatBeat, vTimeOut, vIdleTimeOut : integer;
+ vParamTimeOut, vParamIdleTimeOut, vParamHeartBeatTime, vParamWaitIdleResponse: integer;
+ vLastHeartBeat, vTimeOut, vIdleTimeOut : integer;
  vInTimeOut, vInIdleTimeOut: Boolean;
  vRenewIdle: boolean;
 begin
@@ -1498,23 +1531,23 @@ begin
 
   {$REGION 'Parameters'}
    vParamWaitIdleResponse:= 60;
-   vParamHeatBeatTime:= PrismBaseClass.Options.HeartBeatTime div 1000;
+   vParamHeartBeatTime:= PrismBaseClass.Options.HeartBeatTime div 1000;
    vParamTimeOut := PrismBaseClass.Options.SessionTimeOut;
    if PrismBaseClass.Options.SessionIdleTimeOut  > 0 then
-    vParamIdleTimeOut := PrismBaseClass.Options.SessionIdleTimeOut + vParamHeatBeatTime
+    vParamIdleTimeOut := PrismBaseClass.Options.SessionIdleTimeOut + vParamHeartBeatTime
    else
     vParamIdleTimeOut := 0;
   {$ENDREGION}
 
 
   {$REGION 'Set Values'}
-   vLastHeatBeat:= LastHeartBeatInSeconds;
+   vLastHeartBeat:= LastHeartBeatInSeconds;
   {$ENDREGION}
 
 
   //The Session never connected WebSocket
   {$REGION 'not StabilizedConn'}
-   if (not StabilizedConn) and (vLastHeatBeat > vParamHeatBeatTime) then
+   if (not StabilizedConn) and (vLastHeartBeat > vParamHeartBeatTime) then
    begin
     try
      //FSessionTimer.Terminate;
@@ -1532,8 +1565,8 @@ begin
   if (vParamTimeOut > 0) then
   begin
    {$REGION 'Calc TimeOut Values'}
-   if vLastHeatBeat > vParamHeatBeatTime then
-    vTimeOut:= vLastHeatBeat
+   if vLastHeartBeat > vParamHeartBeatTime then
+    vTimeOut:= vLastHeartBeat
    else
     vTimeOut:= 0;
 
@@ -1648,7 +1681,7 @@ end;
 
 function TPrismSession.PathSession: String;
 begin
- Result:= FPrismBaseClass.Options.RootDirectory + 'temp' + PathDelim + 'Sessions' + PathDelim + UUID + PathDelim;
+ Result:= FPrismBaseClass.Options.RootDirectory + FPrismBaseClass.Options.PathTempSessions + UUID + '\';
 end;
 
 function TPrismSession.PrimaryForm: TForm;
@@ -1726,15 +1759,30 @@ var
  //vWebPathDownload: String;
  vDownloadCode, vDownloadFullURL: String;
  vScriptJS: TStrings;
+ vAppBase: string;
 begin
  if FileExists(FullFilePath) then
  begin
   vScriptJS:= TStringList.Create;
   //vWebPathDownload:= SubtractPaths(FPrismBaseClass.Options.RootDirectory, FullFilePath);
 
+  vAppBase:= '';
+  if PrismBaseClass.PrismServer.AppBase <> '/' then
+   vAppBase:= PrismBaseClass.PrismServer.AppBase;
+
+
   vDownloadCode:= GenerateRandomJustString(17);
   FFileDownloads.Add(vDownloadCode, FullFilePath);
-  vDownloadFullURL:= PrismBaseClass.PrismServer.FpathDownload+'?file='+vDownloadCode+'&token='+Token+'&prismsession='+UUID;
+  vDownloadFullURL:=
+   vAppBase +
+   PrismBaseClass.PrismServer.FpathDownload +
+   '?file=' +
+   vDownloadCode +
+   '&token=' +
+   Token +
+   '&prismsession=' +
+   UUID;
+
 
   if WebFileName = '' then
   WebFileName:= ExtractFileName(FullFilePath);

@@ -1,19 +1,25 @@
-﻿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -52,7 +58,7 @@ type
   TDataSetHelper = class helper for TDataSet
   public
     function DataSetToJSON: TJSONArray; overload;
-    function DataSetToJSON(AColumns: TJSONArray; MaxRecords: Integer; AFormatSettings: TFormatSettings; IncludeRecNOCol: boolean = false): TJSONArray; overload;
+    function DataSetToJSON(AColumns: TJSONArray; MaxRecords: Integer; SkipeInvisibleFields: boolean; AFormatSettings: TFormatSettings; IncludeRecNOCol: boolean = false): TJSONArray; overload;
     procedure SaveToJSON(aFileName : string);
   end;
 
@@ -128,7 +134,7 @@ begin
                     else
                       lJSONObject.AddPair(Self.Fields[lCols].FieldName, GetTJSONFalse);
                   end;
-                // númericos
+                // n�mericos
                 ftFloat{$IFDEF SUPPORTS_FTEXTENDED}, ftExtended{$ENDIF}, ftFMTBcd, ftBCD:
                   lJSONObject.AddPair(Self.Fields[lCols].FieldName, TJSONFloatNumber.Create(Fields[lCols].AsFloat));
                 ftCurrency:
@@ -173,171 +179,11 @@ begin
   end;
 end;
 
-function TDataSetHelper.DataSetToJSON(AColumns: TJSONArray; MaxRecords: Integer; AFormatSettings: TFormatSettings; IncludeRecNOCol: boolean): TJSONArray;
-var
-  lCountRecordsExported: Integer;
-  lCols, lColsArray, I:  Integer;
-  lColName:              String;
-  lHexString:            string;
-  lByteValue:            Byte;
-  FieldExist:            Boolean;
-  lStreamIn:             TStream;
-  lStreamOut:            TStringStream;
-  lJSONArray:            TJSONArray;
-  lJSONObject:           TJSONObject;
-{$IFDEF FPC}
-  Encoder:               TBase64EncodingStream;
-{$ENDIF}
+function TDataSetHelper.DataSetToJSON(AColumns: TJSONArray; MaxRecords: Integer; SkipeInvisibleFields: boolean; AFormatSettings: TFormatSettings; IncludeRecNOCol: boolean): TJSONArray;
 begin
-  lCountRecordsExported:= 0;
-
-  lJSONArray:= TJSONArray.Create;
-  try
-    //Self.First;
-
-    try
-      while ((not Self.Eof) or ((Self.Eof) and (MaxRecords = 1))) and
-            ((MaxRecords <= 0) or ((MaxRecords > 0) and (MaxRecords > lCountRecordsExported))) do
-      begin
-        Inc(lCountRecordsExported);
-
-        lJSONObject:= TJSONObject.Create;
-        lJSONArray.Add(lJSONObject);
-
-          for lColsArray:= 0 to Pred(AColumns.Count) do
-          begin
-              lColName:= AColumns.Items[lColsArray].Value;
-
-              FieldExist:= false;
-              for I := 0 to Pred(FieldCount) do
-              if SameText(lColName, Self.Fields[I].FieldName) then
-              begin
-               FieldExist:= true;
-               lCols:= I;
-               break;
-              end;
-
-              if not FieldExist then
-                lJSONObject.AddPair(lColName, TJSONNull.Create)
-              else
-              begin
-                //lJSONWriter.WritePropertyName(Self.Fields[lCols].FieldName);
-                if Self.Fields[lCols].IsNull then
-                  lJSONObject.AddPair(lColName, TJSONNull.Create)
-                else
-                  case Fields[lCols].DataType of
-                    ftBlob:
-                      begin
-                        lStreamIn := CreateBlobStream(Fields[lCols], bmRead);
-                        lStreamOut := TStringStream.Create;
-                        lStreamIn.Position:= 0;
-
-{$IFNDEF FPC}
-  {$IFDEF HAS_UNIT_SYSTEM_NETENCODING}
-                        TNetEncoding.Base64.Encode(lStreamIn, lStreamOut);
-  {$ELSE}
-                        EncodeStream(lStreamIn, lStreamOut);
-  {$ENDIF}
-{$ELSE}
-                        Encoder:= TBase64EncodingStream.Create(lStreamOut);
-                        Encoder.CopyFrom(lStreamIn, lStreamIn.Size);
-                        Encoder.Flush;
-{$ENDIF}
-
-                        lStreamOut.Position := 0;
-
-                        lJSONObject.AddPair(Self.Fields[lCols].FieldName, lStreamOut.DataString);
-                        lStreamOut.Free;
-                      end;
-                    ftBoolean:
-                      begin
-                        if Fields[lCols].AsBoolean then
-                          lJSONObject.AddPair(lColName, GetTJSONTrue)
-                        else
-                          lJSONObject.AddPair(lColName, GetTJSONFalse);
-                      end;
-                    // númericos
-                    ftFloat{$IFDEF SUPPORTS_FTEXTENDED}, ftExtended{$ENDIF}, ftFMTBcd, ftBCD:
-                    begin
-                      if (Fields[lCols] as TNumericField).DisplayFormat <> '' then
-                       lJSONObject.AddPair(lColName, FormatFloat((Fields[lCols] as TNumericField).DisplayFormat, Self.fields[lcols].AsFloat, AFormatSettings))
-                      else
-                       lJSONObject.AddPair(lColName, TJSONFloatNumber.Create(Fields[lCols].AsFloat));
-                    end;
-                    ftCurrency:
-                    begin
-                      if (Fields[lCols] as TCurrencyField).DisplayFormat <> '' then
-                       lJSONObject.AddPair(lColName, FormatFloat((Fields[lCols] as TCurrencyField).DisplayFormat, Self.fields[lcols].AsCurrency, AFormatSettings))
-                      else
-                       lJSONObject.AddPair(lColName, TJSONFloatNumber.Create(Fields[lCols].AsCurrency));
-                    end;
-                    ftSmallint{$IFDEF SUPPORTS_FTEXTENDED}, ftShortint, ftSingle{$ENDIF}, ftWord, ftInteger, ftAutoInc,
-                    ftLargeint{$IFDEF SUPPORTS_FTEXTENDED}, ftLongWord{$ENDIF}:
-                      lJSONObject.AddPair(lColName, TJSONInt64Number.Create(Int64(Fields[lCols].Value)));
-                    //string
-                    ftString, ftFmtMemo, ftMemo, ftWideString, ftWideMemo, ftUnknown :
-                      lJSONObject.AddPair(lColName, Trim(Fields[lCols].Value));
-                    // DateTime
-                    ftDateTime:
-                      begin
-                       if (Fields[lCols] as TDateTimeField).DisplayFormat <> '' then
-                        lJSONObject.AddPair(lColName, FormatDatetime((Fields[lCols] as TDateTimeField).DisplayFormat, Self.Fields[lCols].AsDateTime))
-                       else
-                        lJSONObject.AddPair(lColName, FormatDatetime('DD/MM/YYYY hh:nn:ss', Self.Fields[lCols].AsDateTime));
-                      end;
-                    ftDate:
-                      begin
-                       if (Fields[lCols] as TDateField).DisplayFormat <> '' then
-                        lJSONObject.AddPair(lColName, FormatDatetime((Fields[lCols] as TDateField).DisplayFormat, Self.Fields[lCols].AsDateTime))
-                       else
-                        lJSONObject.AddPair(lColName, FormatDatetime('DD/MM/YYYY', Self.fields[lcols].AsDateTime));
-                      end;
-                    ftTime:
-                      begin
-                       if (Fields[lCols] as TTimeField).DisplayFormat <> '' then
-                        lJSONObject.AddPair(lColName, FormatDatetime((Fields[lCols] as TTimeField).DisplayFormat, Self.Fields[lCols].AsDateTime))
-                       else
-                        lJSONObject.AddPair(lColName, FormatDatetime('hh:hh:ss', Self.Fields[lCols].AsDateTime));
-                      end;
-                    ftTimeStamp:
-                      begin
-{$IFNDEF FPC}
-                       if (Fields[lCols] as TSQLTimeStampField).DisplayFormat <> '' then
-                        lJSONObject.AddPair(lColName, FormatDatetime((Fields[lCols] as TSQLTimeStampField).DisplayFormat, Self.Fields[lCols].AsDateTime))
-                       else
-{$ENDIF}
-                        lJSONObject.AddPair(lColName, FormatDatetime(AFormatSettings.ShortDateFormat + ' ' + AFormatSettings.ShortTimeFormat, Self.Fields[lCols].AsDateTime)); //'DD/MM/YYYY hh:nn:ss'
-                      end;
-                    ftBytes:
-                    begin
-                      LHexString:= EmptyStr;
-
-                      for LByteValue in Self.fields[lcols].AsBytes do
-                        LHexString:= LHexString + IntToHex(LByteValue, 2);
-
-                      lJSONObject.AddPair(lColName, LHexString);
-                    end;
-                  end;
-              end;
-          end;
-
-        if IncludeRecNOCol then
-        begin
-         lJSONObject.AddPair('PrismRecNo', TJSONIntegerNumber.Create(RecNo));
-        end;
-
-        if MaxRecords > 1 then
-         Self.Next;
-      end;
-    except
-
-    end;
-
-    Result:= lJSONArray.NewClone as TJSONArray;
-  finally
-    lJSONArray.Free;
-  end;
+ result:= D2Bridge.JSON.DataSetToJSON(Self, AColumns, MaxRecords, SkipeInvisibleFields, AFormatSettings, IncludeRecNOCol);
 end;
+
 
 procedure TDataSetHelper.SaveToJSON(aFileName: string);
 var
@@ -461,5 +307,3 @@ begin
 end;
 
 end.
-
-

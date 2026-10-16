@@ -1,4 +1,4 @@
-program D2BridgeWebAppVCL;
+{$IFDEF D2DOCKER}library{$ELSE}program{$ENDIF} D2BridgeWebAppVCL;
 
 {$IFDEF D2BRIDGE}
  //{$APPTYPE CONSOLE}

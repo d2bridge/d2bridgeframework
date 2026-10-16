@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -29,8 +35,8 @@ unit Prism.Interfaces;
 interface
 
 uses
-  Classes, Generics.Collections, IniFiles,
-  D2Bridge.JSON, SysUtils,
+  Classes, Generics.Collections,
+  D2Bridge.JSON, SysUtils, IniFiles,
 {$IFDEF HAS_UNIT_SYSTEM_UITYPES}
   System.UITypes,
 {$ENDIF}
@@ -47,7 +53,7 @@ uses
 {$ENDIF}
   Prism.Types, Prism.DataWare.Mapped,
   D2Bridge.Types, D2Bridge.Lang.Interfaces, D2Bridge.Lang.Term, D2Bridge.Lang.APP.Term,
-  D2Bridge.Image.Interfaces;
+  D2Bridge.Image.Interfaces, D2Bridge.Rest.Interfaces;
 
 
 type
@@ -113,6 +119,10 @@ type
   IPrismWYSIWYGEditor = interface;
   IPrismCamera = interface;
   IPrismQRCodeReader = interface;
+  IPrismChartBase = interface;
+  IPrismChartBaseLegend = interface;
+  IPrismChartBar = interface;
+  IPrismBadge = interface;
 
 
  IPrismCallBack = interface
@@ -139,7 +149,8 @@ type
 
  IPrismCallBacks = interface
   ['{35311C16-3B1E-49E9-BA23-AB5B2997B0E8}']
-   Function GetCallBacks: TDictionary<string, IPrismCallBack>;
+   Function GetCallBacks: TDictionary<string, IPrismCallBack>; overload;
+   function GetCallBacks(APrismForm: IPrismForm): TList<IPrismCallBack>; overload;
 
    procedure Add(APrismCallBack: IPrismCallBack);
    function Register(AName: String; APrismForm: IPrismForm; ACallBackEventProc: TCallBackEvent): IPrismCallBack; overload;
@@ -297,6 +308,8 @@ type
    function AsWYSIWYGEditor: IPrismWYSIWYGEditor;
    function AsCamera: IPrismCamera;
    function AsQRCodeReader: IPrismQRCodeReader;
+   function AsBadge: IPrismBadge;
+   function AsChart: IPrismChartBase;
 
    //**IS** PrismControls
    function IsButton: Boolean;
@@ -339,6 +352,8 @@ type
    function IsWYSIWYGEditor: boolean;
    function IsCamera: Boolean;
    function IsQRCodeReader: Boolean;
+   function IsBadge: boolean;
+   function IsChart: boolean;
 
    function NeedCheckValidation: Boolean;
    function Lang: TD2BridgeTerm;
@@ -1056,6 +1071,7 @@ type
    procedure SetShowTabs(const Value: Boolean);
 //   function GetTabVisible(Index: Integer): boolean;
    procedure SetTabVisible(Index: Integer; Value: Boolean);
+   procedure SetTabVisibleFromCaption(ACaption: string; const Value: Boolean);
 //   function GetTabEnabled(Index: Integer): boolean;
 //   procedure SetTabEnabled(Index: Integer; Value: Boolean);
 //   function GetTabActive(Index: Integer): boolean;
@@ -1064,6 +1080,7 @@ type
    property ActiveTabIndex: integer read GetActiveTabIndex write SetActiveTabIndex;
    property TabVisible[Index: Integer]: Boolean write SetTabVisible;
    property ShowTabs: Boolean read GetShowTabs write SetShowTabs;
+   property TabVisibleFromCaption[ACaption: string]: Boolean write SetTabVisibleFromCaption;
 //   property TabEnabled[Index: Integer]: Boolean read GetTabEnabled write SetTabEnabled;
 //   property TabActive[Index: Integer]: Boolean read GetTabActive write SetTabActive;
  end;
@@ -1200,7 +1217,12 @@ type
 
  IPrismDBImage = interface(IPrismControl)
   ['{25E1C8A9-B79E-4E16-A03D-E4596D143EBA}']
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
+
    function DataWare: TPrismDataLinkField;
+
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
  end;
 {$ENDIF}
 
@@ -1503,6 +1525,67 @@ type
 {$ENDIF}
 
 
+ IPrismBadge = interface(IPrismControl)
+  ['{9C121661-C16E-417B-8567-8B66F3F02F22}']
+   function GetLabelHTMLElement: TComponent;
+   procedure SetLabelHTMLElement(AComponent: TComponent);
+   function GetButtonHTMLElement: TComponent;
+   procedure SetButtonHTMLElement(const Value: TComponent);
+
+   property LabelHTMLElement: TComponent read GetLabelHTMLElement write SetLabelHTMLElement;
+   property ButtonHTMLElement: TComponent read GetButtonHTMLElement write SetButtonHTMLElement;
+ end;
+
+
+ IPrismChartBase = interface(IPrismControl)
+  ['{FFE1F726-AC20-48D2-8D47-0F77ABD4FB1B}']
+   function Legend: IPrismChartBaseLegend;
+ end;
+
+
+ IPrismChartBaseLegend = interface
+  ['{3D0F32C6-ECBF-4BD2-B5C8-88F6E15F5974}']
+   function GetRight: Variant;
+   procedure SetBottom(const Value: variant);
+   function GetBottom: variant;
+   procedure SetRight(const Value: Variant);
+   function GetAlign: TPrismAlignment;
+   function GetLeft: variant;
+   procedure SetAlign(const Value: TPrismAlignment);
+   function GetTop: variant;
+   function GetVisible: boolean;
+   procedure SetLeft(const Value: variant);
+   procedure SetTop(const Value: variant);
+   procedure SetVisible(const Value: boolean);
+
+   property Visible: boolean read GetVisible write SetVisible;
+   property Align: TPrismAlignment read GetAlign write SetAlign;
+   property Bottom: variant read GetBottom write SetBottom;
+   property Left: variant read GetLeft write SetLeft;
+   property Right: Variant read GetRight write SetRight;
+   property Top: variant read GetTop write SetTop;
+ end;
+
+
+ IPrismChartBaseLegendData = interface
+  ['{9FEA525B-F65E-4F0C-B091-8BB9BBC94FA6}']
+ end;
+
+
+ IPrismChartBaseTitle = interface
+  ['{F1321966-2236-4C37-998D-974E4AF10B77}']
+ end;
+
+
+ IPrismChartBar = interface(IPrismChartBase)
+  ['{C5EF6269-B880-49E3-859F-B7E5AD975AF3}']
+ end;
+
+
+ IPrismChartBaseTooltip = interface
+  ['{B2C3CCAC-DD39-4F1A-B4B8-E5267A4A94BE}']
+ end;
+
  IPrismForm = interface
   ['{C3797A0A-AAC1-4571-8A40-7CBB6AFBB38B}']
    //Private
@@ -1666,6 +1749,7 @@ type
    function GetD2BridgeForms: TList<TObject>;
    function GetCallBacks: IPrismCallBacks;
    function GetPushID: string;
+   function GetAuthID: string;
    procedure SetData(AValue: TObject);
    function GetData: TObject;
    function GetFileDownloads: TDictionary<string, string>;
@@ -1771,6 +1855,7 @@ type
    property UUID: string read GetUUID;
    property CallBackID: string read GetCallBackID;
    property PushID: string read GetPushID;
+   property AuthID: string read GetAuthID;
    property Token: string read GetToken;
    property ActiveForm: IPrismForm read GetActiveForm;
    property D2BridgeForms: TList<TObject> read GetD2BridgeForms;
@@ -1799,6 +1884,7 @@ type
    procedure CloseAll;
    function FromThreadID(const AThreadID: Integer; AAlertErrorThreadID: Boolean = false): IPrismSession;
    function FromPushID(const APushID: string): IPrismSession;
+   function FromAuthID(const AAuthID: string): IPrismSession;
    function Items: TList<IPrismSession>;
    function GetMainThreadPrismSession: IPrismSession;
    procedure SetMainThreadPrismSession(APrismSession: IPrismSession);
@@ -1903,116 +1989,114 @@ type
  end;
 
 
-
- IPrismINIConfig = interface
-  ['{59841A53-C1D8-4987-975E-FDA856F052F8}']
-  function ServerPort(ADefaultPort: Integer = 8888): Integer;
-  function ServerName(ADefaultServerName: String = 'D2Bridge Server'): String;
-  function ServerDescription(ADefaultServerDescription: String = 'D2Bridge Primary Server'): String;
-
-  function FileINIConfig: TIniFile;
- end;
-
-
  IPrismOptions = interface
   ['{16BF76DA-F5EC-4227-9EEE-32CE6D838469}']
-  function GetLanguage: string;
-  procedure SetLanguage(AValue: string);
-  function GetLoading: Boolean;
-  procedure SetLoading(AValue: Boolean);
-  function GetPathCSS: string;
-  procedure SetPathCSS(const Value: string);
-  function GetRootDirectory: string;
-  procedure SetRootDirectory(const Value: string);
-  function GetPathJS: string;
-  procedure SetPathJS(const Value: string);
-  function GetPathFont: string;
-  procedure SetPathFont(const Value: string);
-  function GetIncludeJQGrid: Boolean;
-  function GetIncludeJQuery: Boolean;
-  function GetIncludeSweetAlert2: Boolean;
-  procedure SetIncludeJQGrid(const Value: Boolean);
-  procedure SetIncludeJQuery(const Value: Boolean);
-  procedure SetIncludeSweetAlert2(const Value: Boolean);
-  function GetIncludeStyle: Boolean;
-  procedure SetIncludeStyle(const Value: Boolean);
-  function GetIncludeBootStrap: Boolean;
-  procedure SetIncludeBootStrap(const Value: Boolean);
-  function GetIncludeInputMask: Boolean;
-  procedure SetIncludeInputMask(const Value: Boolean);
-  function GetForceCloseExpired: Boolean;
-  procedure SetForceCloseExpired(AValue: Boolean);
-  function GetDataSetLog: Boolean;
-  procedure SetDataSetLog(const Value: Boolean);
-  function GetUseSSL: Boolean;
-  procedure SetUseSSL(const Value: Boolean);
-  function GetUseINIConfig: Boolean;
-  procedure SetUseINIConfig(const Value: Boolean);
-  function GetDataBaseFormatSettings: TFormatSettings;
-  procedure SetDataBaseFormatSettings(Value: TFormatSettings);
-  function GetHTMLFormatSettings: TFormatSettings;
-  procedure SetHTMLFormatSettings(Value: TFormatSettings);
-  function GetValidateAllControls: Boolean;
-  procedure SetValidateAllControls(const Value: Boolean);
-  procedure SetLogException(const Value: Boolean);
-  function GetLogException: boolean;
-  function GetLogSecurity: Boolean;
-  procedure SetLogSecurity(const Value: Boolean);
-  function GetLogAccess: Boolean;
-  procedure SetLogAccess(const Value: Boolean);
-  procedure SetPathLogException(const Value: string);
-  function GetPathLogException: string;
-  procedure SetSessionTimeOut(const Value: Integer);
-  function GetSessionTimeOut: integer;
-  procedure SetSessionIdleTimeOut(const Value: Integer);
-  function GetSessionIdleTimeOut: integer;
-  function LogFile: string;
-  procedure SetCoInitialize(const Value: Boolean);
-  function GetCoInitialize: Boolean;
-  procedure SetVCLStyles(const Value: Boolean);
-  function GetVCLStyles: Boolean;
-  procedure SetDataWareMapped(const Value: TPrismDataWareMapped);
-  function GetDataWareMapped: TPrismDataWareMapped;
-  function GetHeartBeatTime: integer;
-  procedure SetHeartBeatTime(const Value: integer);
-  function GetShowError500Page: boolean;
-  procedure SetShowError500Page(const Value: boolean);
-  procedure SetUseMainThread(const Value: Boolean);
-  function GetUseMainThread: Boolean;
+   function GetLanguage: string;
+   procedure SetLanguage(AValue: string);
+   function GetLoading: Boolean;
+   procedure SetLoading(AValue: Boolean);
+   function GetPathCSS: string;
+   procedure SetPathCSS(const Value: string);
+   function GetPathTemp: string;
+   function GetPathTempSessions: string;
+   procedure SetPathTemp(const Value: string);
+   procedure SetPathTempSessions(const Value: string);
+   function GetRootDirectory: string;
+   procedure SetRootDirectory(const Value: string);
+   function GetPathJS: string;
+   procedure SetPathJS(const Value: string);
+   function GetPathFont: string;
+   procedure SetPathFont(const Value: string);
+   function GetIncludeJQGrid: Boolean;
+   function GetIncludeJQuery: Boolean;
+   function GetIncludeSweetAlert2: Boolean;
+   procedure SetIncludeJQGrid(const Value: Boolean);
+   procedure SetIncludeJQuery(const Value: Boolean);
+   procedure SetIncludeSweetAlert2(const Value: Boolean);
+   function GetIncludeStyle: Boolean;
+   procedure SetIncludeStyle(const Value: Boolean);
+   function GetIncludeBootStrap: Boolean;
+   procedure SetIncludeBootStrap(const Value: Boolean);
+   function GetIncludeInputMask: Boolean;
+   procedure SetIncludeInputMask(const Value: Boolean);
+   function GetForceCloseExpired: Boolean;
+   procedure SetForceCloseExpired(AValue: Boolean);
+   function GetDataSetLog: Boolean;
+   procedure SetDataSetLog(const Value: Boolean);
+   function GetUseSSL: Boolean;
+   procedure SetUseSSL(const Value: Boolean);
+   function GetUseINIConfig: Boolean;
+   procedure SetUseINIConfig(const Value: Boolean);
+   function GetDataBaseFormatSettings: TFormatSettings;
+   procedure SetDataBaseFormatSettings(Value: TFormatSettings);
+   function GetHTMLFormatSettings: TFormatSettings;
+   procedure SetHTMLFormatSettings(Value: TFormatSettings);
+   function GetValidateAllControls: Boolean;
+   procedure SetValidateAllControls(const Value: Boolean);
+   procedure SetLogException(const Value: Boolean);
+   function GetLogException: boolean;
+   function GetLogSecurity: Boolean;
+   procedure SetLogSecurity(const Value: Boolean);
+   function GetLogAccess: Boolean;
+   procedure SetLogAccess(const Value: Boolean);
+   function GetLogFileMode: TPrismLogFileMode;
+   procedure SetLogFileMode(const Value: TPrismLogFileMode);
+   procedure SetPathLogException(const Value: string);
+   function GetPathLogException: string;
+   procedure SetSessionTimeOut(const Value: Integer);
+   function GetSessionTimeOut: integer;
+   procedure SetSessionIdleTimeOut(const Value: Integer);
+   function GetSessionIdleTimeOut: integer;
+   function LogFile: string;
+   procedure SetCoInitialize(const Value: Boolean);
+   function GetCoInitialize: Boolean;
+   procedure SetVCLStyles(const Value: Boolean);
+   function GetVCLStyles: Boolean;
+   procedure SetDataWareMapped(const Value: TPrismDataWareMapped);
+   function GetDataWareMapped: TPrismDataWareMapped;
+   function GetHeartBeatTime: integer;
+   procedure SetHeartBeatTime(const Value: integer);
+   function GetShowError500Page: boolean;
+   procedure SetShowError500Page(const Value: boolean);
+   procedure SetUseMainThread(const Value: Boolean);
+   function GetUseMainThread: Boolean;
 
-  function Security: IPrismOptionSecurity;
+   function Security: IPrismOptionSecurity;
 
-  property Language: string read GetLanguage write SetLanguage;
-  property Loading: boolean read GetLoading write SetLoading;
-  property PathCSS: string read GetPathCSS write SetPathCSS;
-  property PathJS: string read GetPathJS write SetPathJS;
-  property PathFont: string read GetPathFont write SetPathFont;
-  property RootDirectory: string read GetRootDirectory write SetRootDirectory;
-  property IncludeSweetAlert2: Boolean read GetIncludeSweetAlert2 write SetIncludeSweetAlert2;
-  property IncludeJQuery: Boolean read GetIncludeJQuery write SetIncludeJQuery;
-  property IncludeJQGrid: Boolean read GetIncludeJQGrid write SetIncludeJQGrid;
-  property IncludeStyle: Boolean read GetIncludeStyle write SetIncludeStyle;
-  property IncludeBootStrap: Boolean read GetIncludeBootStrap write SetIncludeBootStrap;
-  property IncludeInputMask: Boolean read GetIncludeInputMask write SetIncludeInputMask;
-  property ValidateAllControls: Boolean read GetValidateAllControls write SetValidateAllControls;
-  property ForceCloseExpired: Boolean read GetForceCloseExpired write SetForceCloseExpired;
-  property DataSetLog: Boolean read GetDataSetLog write SetDataSetLog;
-  property UseINIConfig: Boolean read GetUseINIConfig write SetUseINIConfig;
-  property SSL: Boolean read GetUseSSL write SetUseSSL;
-  property LogException: Boolean read GetLogException write SetLogException;
-  property LogSecurity: Boolean read GetLogSecurity write SetLogSecurity;
-  property LogAccess: Boolean read GetLogAccess write SetLogAccess;
-  property PathLogException: string read GetPathLogException write SetPathLogException;
-  property CoInitialize: boolean read GetCoInitialize write SetCoInitialize;
-  property VCLStyles: boolean read GetVCLStyles write SetVCLStyles;
-  property DataBaseFormatSettings: TFormatSettings read GetDataBaseFormatSettings Write SetDataBaseFormatSettings;
-  property HTMLFormatSettings: TFormatSettings read GetHTMLFormatSettings write SetHTMLFormatSettings;
-  property DataWareMapped: TPrismDataWareMapped read GetDataWareMapped write SetDataWareMapped;
-  property SessionTimeOut: integer read GetSessionTimeOut write SetSessionTimeOut;
-  property SessionIdleTimeOut: integer read GetSessionIdleTimeOut write SetSessionIdleTimeOut;
-  property HeartBeatTime: integer read GetHeartBeatTime write SetHeartBeatTime;
-  property ShowError500Page: boolean read GetShowError500Page write SetShowError500Page;
-  property UseMainThread: Boolean read GetUseMainThread write SetUseMainThread;
+   property Language: string read GetLanguage write SetLanguage;
+   property Loading: boolean read GetLoading write SetLoading;
+   property PathCSS: string read GetPathCSS write SetPathCSS;
+   property PathJS: string read GetPathJS write SetPathJS;
+   property PathFont: string read GetPathFont write SetPathFont;
+   property PathTemp: string read GetPathTemp write SetPathTemp;
+   property PathTempSessions: string read GetPathTempSessions write SetPathTempSessions;
+   property RootDirectory: string read GetRootDirectory write SetRootDirectory;
+   property IncludeSweetAlert2: Boolean read GetIncludeSweetAlert2 write SetIncludeSweetAlert2;
+   property IncludeJQuery: Boolean read GetIncludeJQuery write SetIncludeJQuery;
+   property IncludeJQGrid: Boolean read GetIncludeJQGrid write SetIncludeJQGrid;
+   property IncludeStyle: Boolean read GetIncludeStyle write SetIncludeStyle;
+   property IncludeBootStrap: Boolean read GetIncludeBootStrap write SetIncludeBootStrap;
+   property IncludeInputMask: Boolean read GetIncludeInputMask write SetIncludeInputMask;
+   property ValidateAllControls: Boolean read GetValidateAllControls write SetValidateAllControls;
+   property ForceCloseExpired: Boolean read GetForceCloseExpired write SetForceCloseExpired;
+   property DataSetLog: Boolean read GetDataSetLog write SetDataSetLog;
+   property UseINIConfig: Boolean read GetUseINIConfig write SetUseINIConfig;
+   property SSL: Boolean read GetUseSSL write SetUseSSL;
+   property LogException: Boolean read GetLogException write SetLogException;
+   property LogSecurity: Boolean read GetLogSecurity write SetLogSecurity;
+   property LogAccess: Boolean read GetLogAccess write SetLogAccess;
+   property LogFileMode: TPrismLogFileMode read GetLogFileMode write SetLogFileMode;
+   property PathLogException: string read GetPathLogException write SetPathLogException;
+   property CoInitialize: boolean read GetCoInitialize write SetCoInitialize;
+   property VCLStyles: boolean read GetVCLStyles write SetVCLStyles;
+   property DataBaseFormatSettings: TFormatSettings read GetDataBaseFormatSettings Write SetDataBaseFormatSettings;
+   property HTMLFormatSettings: TFormatSettings read GetHTMLFormatSettings write SetHTMLFormatSettings;
+   property DataWareMapped: TPrismDataWareMapped read GetDataWareMapped write SetDataWareMapped;
+   property SessionTimeOut: integer read GetSessionTimeOut write SetSessionTimeOut;
+   property SessionIdleTimeOut: integer read GetSessionIdleTimeOut write SetSessionIdleTimeOut;
+   property HeartBeatTime: integer read GetHeartBeatTime write SetHeartBeatTime;
+   property ShowError500Page: boolean read GetShowError500Page write SetShowError500Page;
+   property UseMainThread: Boolean read GetUseMainThread write SetUseMainThread;
  end;
 
 
@@ -2020,6 +2104,7 @@ type
   ['{647D682F-06F6-4EF4-B942-97643439B770}']
    function IP: IPrismOptionSecurityIP;
    function UserAgent: IPrismOptionSecurityUserAgent;
+   function Rest: ID2BridgeRestSecurity;
 
    procedure LoadDefaultSecurity;
 
@@ -2142,7 +2227,6 @@ type
    procedure SetServerPort(APort: Integer);
 
    function GetOptions: IPrismOptions;
-   function INIConfig: IPrismINIConfig;
 
    procedure InstancePrimaryForm(APrismSession: IPrismSession);
 
@@ -2153,6 +2237,11 @@ type
    function ServerUUID: string;
 
    function Sessions: IPrismSessions;
+
+   function Rest: ID2BridgeRest;
+
+   function IsD2DockerContext: boolean;
+   function IsD2BridgeContext: boolean;
 
    property ServerPort: integer read GetServerPort write SetServerPort;
    //property Sessions: TDictionary<string, IPrismSession> read GetSessions;
@@ -2179,6 +2268,3 @@ implementation
 
 
 end.
-
-
-

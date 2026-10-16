@@ -1,19 +1,25 @@
-ï»¿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -323,9 +329,9 @@ begin
   add('<script>');
   add('  $(document).ready(function(){');
   add('    var allowedFileTypes = ['+ AllowedFileTypesToJSVar +']; // Tipos de arquivo permitidos (deixe vazio para aceitar qualquer tipo)');
-  add('    var maxFileCount = ' + IntToStr(MaxFiles) + '; // Quantidade mÃ¡xima de arquivos (0 para sem limite)');
-  add('    var maxFileSizePerFile = '+ IntToStr(MaxFileSize) +' * 1024 * 1024; // Tamanho mÃ¡ximo por arquivo (5 MB)');
-  add('    var maxTotalFileSize = ' + IntToStr(MaxUploadSize) + ' * 1024 * 1024; // Tamanho total mÃ¡ximo (20 MB)');
+  add('    var maxFileCount = ' + IntToStr(MaxFiles) + '; // Quantidade máxima de arquivos (0 para sem limite)');
+  add('    var maxFileSizePerFile = '+ IntToStr(MaxFileSize) +' * 1024 * 1024; // Tamanho máximo por arquivo (5 MB)');
+  add('    var maxTotalFileSize = ' + IntToStr(MaxUploadSize) + ' * 1024 * 1024; // Tamanho total máximo (20 MB)');
   add('');
   if FInputVisible then
   begin
@@ -361,6 +367,7 @@ begin
   add('');
   add('        if (maxFileSizePerFile > 0 && files[i].size > maxFileSizePerFile) {');
   add('          swal.fire({ CaptionUpload: "", icon: "error", text : `' + FBaseClass.LangNav.Upload.MsgErrorFileSize + '` });');
+  add('          $(''#'+AnsiUpperCase(ItemPrefixID)+'input'').val('''');');
   add('          return;');
   add('        }');
   add('');
@@ -380,14 +387,15 @@ begin
   add('   LockThreadClient();');
   add('');
   add('      $.ajax({');
-  add('        url: ''/d2bridge/upload?token='+ vToken +'&formuuid='+ vFormUUID +'&prismsession='+ vUUID +'&origin=upload'+'&sender='+ Uppercase(ItemPrefixID) +''',');
+  add('        url: appBaseD2Bridge + ''/d2bridge/upload?token='+ vToken +'&formuuid='+ vFormUUID +'&prismsession='+ vUUID +'&origin=upload'+'&sender='+ Uppercase(ItemPrefixID) +''',');
   add('        type: ''POST'',');
   add('        data: formData,');
   add('        processData: false,');
   add('        contentType: false,');
   add('        success: function(response){');
   add('          $(''#'+AnsiUpperCase(ItemPrefixID)+'clearButton'').click();');
-  add('     UnLockThreadClient();');
+  add('          $(''#'+AnsiUpperCase(ItemPrefixID)+'input'').val('''');');
+  add('          UnLockThreadClient();');
   if FShowFinishMessage then
   begin
    add('          swal.fire({ CaptionUpload: "", icon: "success", text : "' + FBaseClass.LangNav.Upload.MsgSuccessUpload + '" });');
@@ -461,4 +469,3 @@ begin
 end;
 
 end.
-

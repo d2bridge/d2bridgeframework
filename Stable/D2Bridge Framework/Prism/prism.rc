@@ -10,6 +10,7 @@ PRISM_Support_Assets_JS_WYSIWYGEditor RCDATA "support\\assets\\js\\summernote-bs
 PRISM_Support_Assets_JS_WYSIWYGEditorPlugin RCDATA "support\\assets\\js\\summernote-ext-highlight.js"
 PRISM_Support_Assets_JS_D2BRIDGECAMERA RCDATA "support\\assets\\js\\d2bridgecamera.js"
 PRISM_Support_Assets_JS_D2BRIDGEQRCodeReader RCDATA "support\\assets\\js\\zxing.browser.min.js"
+PRISM_Support_Assets_JS_D2docker RCDATA "support\\assets\\js\\d2docker.js"
 PRISM_Support_Assets_CSS_D2Bridge RCDATA "support\\assets\\css\\d2bridge.css"
 PRISM_Support_Assets_CSS_JQGrid RCDATA "support\\assets\\css\\ui.jqgrid-bootstrap5.css"
 PRISM_Support_Assets_CSS_SweetAlert2 RCDATA "support\\assets\\css\\sweetalert2.css"

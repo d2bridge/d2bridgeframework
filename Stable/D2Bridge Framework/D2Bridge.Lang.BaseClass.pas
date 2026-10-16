@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -163,10 +169,11 @@ end;
 procedure TD2BridgeLangBaseClass.LoadJSONfromResource;
 var
   JSONResouceName: String;
-  ResInfo:         {$IFNDEF FPC}HRSRC{$ELSE}TLResource{$ENDIF};
-  ResStream:       {$IFNDEF FPC}TResourceStream{$ELSE}TLazarusResourceStream{$ENDIF};
-  JSONContent:     TStringStream;
-  sFile:           TStringStream;
+  ResInfo:           {$IFNDEF FPC}HRSRC{$ELSE}TLResource{$ENDIF};
+  ResStream:         {$IFNDEF FPC}TResourceStream{$ELSE}TLazarusResourceStream{$ENDIF};
+  JSONContent:       TStringStream;
+  sFile:             TStringStream;
+  json_file_to_load: string;
 begin
  try
   {$REGION 'Embed JSON (Resource)'}
@@ -221,11 +228,12 @@ begin
   {$REGION 'Load JSON from File PATH'}
    if not FD2BridgeLangCoreBaseClass.EmbedJSON then
    begin
-    if FileExists(FD2BridgeLangCoreBaseClass.PathJSON + FD2BridgeLang.HTMLLang + '.json') then
+    json_file_to_load:=FD2BridgeLangCoreBaseClass.PathJSON + FD2BridgeLang.HTMLLang + '.json';
+    if FileExists(json_file_to_load) then
     begin
      sFile:= TStringStream.Create('', TEncoding.UTF8);
-     sFile.LoadFromFile(FD2BridgeLangCoreBaseClass.PathJSON + FD2BridgeLang.HTMLLang + '.json');
-
+     sFile.LoadFromFile(json_file_to_load);
+     
      FJSONResourceLang := TJSONObject.ParseJSONValue(sFile.DataString) as TJSONObject;
 
      sFile.Clear;

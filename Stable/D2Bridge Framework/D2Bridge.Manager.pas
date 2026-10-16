@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -81,13 +87,15 @@ type
    constructor Create(AOwner: TComponent);
    destructor Destroy; override;
 
-   class function Version: string;
    function SupportedVCLClasses: TList<TClass>;
    function SupportsVCLClass(AClass: TClass; ARaiseError: boolean = true): Boolean;
   published
 
    function API: ID2BridgeAPI;
    function CSSClass: TCSSClass;
+
+   class function Version: string;
+   function D2BridgeVersion: string;
 
    property Languages: TD2BridgeLangs read GetLanguages write SetLanguages;
    property Owner:TComponent read FAOwner;
@@ -166,6 +174,8 @@ begin
  FD2BridgeManagerOptions:= TD2BridgeManagerOptions.Create;
  FSupportedVCLClasses:= TList<TClass>.Create;
 
+ Initialize(FD2BridgeFormClass);
+
  FD2BridgeAPI:= TD2BridgeAPI.Create;
 
  FD2BridgeLangCore:= TD2BridgeLangCore.Create;
@@ -183,6 +193,11 @@ end;
 function TD2BridgeManager.CSSClass: TCSSClass;
 begin
  Result:= FCSSClass;
+end;
+
+function TD2BridgeManager.D2BridgeVersion: string;
+begin
+ result:= Version;
 end;
 
 destructor TD2BridgeManager.Destroy;
@@ -341,7 +356,7 @@ begin
  Result:= SupportedVCLClasses.Contains(OverrideVCL(AClass));
 
 {$IFDEF MSWINDOWS}
- if (not Result) and ARaiseError and IsDebuggerPresent then
+ if (not Result) and ARaiseError and IsDebuggerPresent and (not IsD2DockerContext) then
   try
    raise Exception.Create(AClass.ClassName+' is not Renderizable with D2Bridge Framework yet');
   except
@@ -351,7 +366,7 @@ end;
 
 class function TD2BridgeManager.Version: string;
 begin
- Result:= '2.0.8'; //Version of D2Bridge Framework
+ Result:= '2.5.78'; //Version of D2Bridge Framework
 end;
 
 end.

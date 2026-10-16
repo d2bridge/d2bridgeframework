@@ -1,19 +1,25 @@
-﻿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -70,10 +76,13 @@ type
   private
    FItems: TDictionary<string, IPrismCallBack>;
    FSession: IPrismSession;
-   Function GetCallBacks: TDictionary<string, IPrismCallBack>;
+   FLock: TMultiReadExclusiveWriteSynchronizer;
+   Function GetCallBacks: TDictionary<string, IPrismCallBack>; overload;
   public
    constructor Create(APrismSession: IPrismSession);
    destructor Destroy; override;
+
+   procedure Clear;
 
    procedure Add(APrismCallBack: IPrismCallBack);
    function Register(AName: String; APrismForm: IPrismForm; ACallBackEventProc: TCallBackEvent): IPrismCallBack; overload;
@@ -84,6 +93,7 @@ type
    procedure UnRegisterAll(APrismForm: IPrismForm);
    function GetCallBack(AName: String; APrismForm: IPrismForm): IPrismCallBack; overload;
    function GetCallBack(AName, FormUUID: String): IPrismCallBack; overload;
+   function GetCallBacks(APrismForm: IPrismForm): TList<IPrismCallBack>; overload;
    function Execute(AName, FormUUID: String; EventParams: TStrings): string;
    function CallBackJS(ACallBackName: String; AFormUUID: String = ''; Parameters: String = ''; LockClient: Boolean = false): string; overload;
    function CallBackJS(ACallBackName: String; AReturnFalse: Boolean = true; AFormUUID: String = ''; Parameters: String = ''; LockClient: Boolean = false): string; overload;
@@ -100,9 +110,12 @@ type
    FFormUUID: string;
    FPrismSession: IPrismSession;
    FTempCallBacks: TDictionary<string, IPrismCallBack>;
+   FLock: TMultiReadExclusiveWriteSynchronizer;
   public
    constructor Create(AFormUUID: string; APrismForm: IPrismForm; APrismSession: IPrismSession);
    destructor Destroy; override;
+
+   procedure Clear;
 
    function Register(AName: String; ACallBackEventProc: TCallBackEvent): IPrismCallBack; overload;
    function Register(AName: String; Parameters: String = ''): IPrismCallBack; overload;
@@ -206,7 +219,13 @@ end;
 
 procedure TPrismCallBacks.Add(APrismCallBack: IPrismCallBack);
 begin
- FItems.AddOrSetValue(APrismCallBack.ID, APrismCallBack);
+ FLock.BeginWrite;
+
+ try
+  FItems.AddOrSetValue(APrismCallBack.ID, APrismCallBack);
+ finally
+  FLock.EndWrite;
+ end;
 end;
 
 
@@ -262,20 +281,14 @@ begin
   Result:= StringReplace(Result, ' return false;', '', []);
 end;
 
-constructor TPrismCallBacks.Create(APrismSession: IPrismSession);
-begin
- FSession:= APrismSession;
-
- FItems:= TDictionary<string, IPrismCallBack>.Create;
-end;
-
-destructor TPrismCallBacks.Destroy;
+procedure TPrismCallBacks.Clear;
 var
  vPrismCallBackIntf: IPrismCallBack;
  vPrismCallBack: TPrismCallBack;
  vKeys: TList<string>;
  vKey: string;
 begin
+ FLock.BeginWrite;
  try
   if FItems.Count > 0 then
   begin
@@ -303,13 +316,30 @@ begin
 
    vKeys.Free;
   end;
-
-  FItems.Free;
- except
+ finally
+  FLock.EndWrite;
  end;
+end;
+
+constructor TPrismCallBacks.Create(APrismSession: IPrismSession);
+begin
+ FSession:= APrismSession;
+
+ FItems:= TDictionary<string, IPrismCallBack>.Create;
+
+ FLock:= TMultiReadExclusiveWriteSynchronizer.Create;
+end;
+
+destructor TPrismCallBacks.Destroy;
+begin
+ Clear;
+
+ FreeAndNil(FItems);
 
  if Assigned(FSession) then
   FSession:= nil;
+
+ FLock.Free;
 
  inherited;
 end;
@@ -336,12 +366,36 @@ function TPrismCallBacks.GetCallBack(AName, FormUUID: String): IPrismCallBack;
 var
  I: Integer;
 begin
- for I := 0 to Pred(Items.Count) do
-  if SameText(AName, Items.Values.ToArray[I].Name) and (FormUUID = Items.Values.ToArray[I].PrismForm.FormUUID) then
-  begin
-   Result:= Items.Values.ToArray[I];
-   break;
-  end;
+ FLock.BeginRead;
+ try
+  for I := 0 to Pred(Items.Count) do
+   if SameText(AName, Items.Values.ToArray[I].Name) and (FormUUID = Items.Values.ToArray[I].PrismForm.FormUUID) then
+   begin
+    Result:= Items.Values.ToArray[I];
+    break;
+   end;
+ finally
+  FLock.EndRead;
+ end;
+end;
+
+function TPrismCallBacks.GetCallBacks(APrismForm: IPrismForm): TList<IPrismCallBack>;
+var
+ I: Integer;
+begin
+ result:= TList<IPrismCallBack>.Create;
+
+ FLock.BeginRead;
+ try
+  for I := 0 to Pred(Items.Count) do
+   if Items.Values.ToArray[I].PrismForm = APrismForm then
+   begin
+    Result.Add(Items.Values.ToArray[I]);
+   end;
+ finally
+  FLock.EndRead;
+ end;
+
 end;
 
 function TPrismCallBacks.GetCallBacks: TDictionary<string, IPrismCallBack>;
@@ -355,7 +409,13 @@ var
 begin
  vPrismCallBack:= TPrismCallBack.Create(ACallback.Name, '', APrismForm, ACallback.CallBackEvent);
  vPrismCallBack.FID:= ACallback.ID;
- FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+
+ FLock.BeginWrite;
+ try
+  FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+ finally
+  FLock.EndWrite;
+ end;
 
  result:= vPrismCallBack;
 end;
@@ -379,7 +439,12 @@ begin
  else
   vPrismCallBack.CallBackEvent:= Nil;
 
- FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+ FLock.BeginWrite;
+ try
+  FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+ finally
+  FLock.EndWrite;
+ end;
 
  result:= vPrismCallBack;
 end;
@@ -394,26 +459,32 @@ begin
  try
   vNames:= TList<string>.Create(FItems.Keys);
 
-  for I := 0 to Pred(vNames.Count) do
-  begin
-   if FItems.ContainsKey(vNames[I]) then
+  FLock.BeginWrite;
+
+  try
+   for I := 0 to Pred(vNames.Count) do
    begin
-    vPrismCallBackIntf:= FItems[vNames[I]];
-    if (vPrismCallBackIntf.Name = AName) then
+    if FItems.ContainsKey(vNames[I]) then
     begin
-     FItems.Remove(vNames[I]);
+     vPrismCallBackIntf:= FItems[vNames[I]];
+     if (vPrismCallBackIntf.Name = AName) then
+     begin
+      FItems.Remove(vNames[I]);
 
-     try
-      vPrismCallBack:= vPrismCallBackIntf as TPrismCallBack;
-      vPrismCallBackIntf:= nil;
+      try
+       vPrismCallBack:= vPrismCallBackIntf as TPrismCallBack;
+       vPrismCallBackIntf:= nil;
 
-      vPrismCallBack.Destroy;
-     except
+       vPrismCallBack.Destroy;
+      except
+      end;
+
+      Break;
      end;
-
-     Break;
     end;
    end;
+  finally
+   FLock.EndWrite;
   end;
 
   vNames.Free;
@@ -431,6 +502,9 @@ var
  I: Integer;
 begin
  try
+  FLock.BeginWrite;
+
+  try
    if Assigned(APrismForm) then
    begin
     vNames:= TList<string>.Create(FItems.Keys);
@@ -458,7 +532,10 @@ begin
 
     vNames.Free;
    end;
- except
+  except
+  end;
+ finally
+  FLock.EndWrite;
  end;
 end;
 
@@ -467,7 +544,13 @@ var
  vPrismCallBack: TPrismCallBack;
 begin
  vPrismCallBack:= TPrismCallBack.Create(AName, Parameters, APrismForm, nil);
- FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+
+ FLock.BeginWrite;
+ try
+  FItems.AddOrSetValue(vPrismCallBack.ID, vPrismCallBack);
+ finally
+  FLock.EndWrite;
+ end;
 
  result:= vPrismCallBack;
 end;
@@ -481,11 +564,61 @@ begin
   result:= FPrismForm.Session.CallBacks.CallBackJS(ACallBackName, true, FPrismForm.FormUUID, Parameters, LockClient)
  else
  begin
+  FLock.BeginRead;
+  try
   if (not (FTempCallBacks.Count <= 0)) then
    if FTempCallBacks.ContainsKey(ACallBackName) then
    begin
     result:= FPrismSession.CallBacks.CallBackDirectJS(FTempCallBacks[ACallBackName], FFormUUID, Parameters, LockClient);
    end;
+  finally
+   FLock.EndRead;
+  end;
+ end;
+end;
+
+procedure TPrismFormCallBacks.Clear;
+var
+ vPrismCallBackIntf: IPrismCallBack;
+ vPrismCallBack: TPrismCallBack;
+ vKeys: TList<string>;
+ vKey: string;
+begin
+ try
+  FLock.BeginWrite;
+  try
+   if FTempCallBacks.Count > 0 then
+   begin
+    vKeys:= TList<string>.Create(FTempCallBacks.Keys);
+
+    try
+     while vKeys.Count > 0 do
+     begin
+      vKey:= vKeys.Last;
+      vKeys.Remove(vKey);
+
+      try
+       vPrismCallBackIntf:= FTempCallBacks[vKey];
+
+       FTempCallBacks.Remove(vKey);
+
+       vPrismCallBack:= vPrismCallBackIntf as TPrismCallBack;
+       vPrismCallBackIntf:= nil;
+       vPrismCallBack.Free;
+      except
+      end;
+     end;
+    except
+    end;
+
+    vKeys.Free;
+   end;
+  except
+  end;
+
+  FTempCallBacks.Clear;
+ finally
+  FLock.EndWrite;
  end;
 end;
 
@@ -495,17 +628,22 @@ var
 begin
  if Assigned(APrismFormToConsolide) then
  begin
-  // Percorrendo o dicionário
-  for vIPrismCallBack in FTempCallBacks.Values do
-  begin
-   FPrismSession.CallBacks.Register(vIPrismCallBack, APrismFormToConsolide);
-//   if Assigned(vIPrismCallBack.CallBackEvent) then
-//    APrismFormToConsolide.CallBacks.Register(vIPrismCallBack.Name, vIPrismCallBack.CallBackEvent)
-//   else
-//    APrismFormToConsolide.CallBacks.Register(vIPrismCallBack.Name, vIPrismCallBack.DefaultParameters);
+  // Percorrendo o dicion�rio
+  FLock.BeginRead;
+  try
+   for vIPrismCallBack in FTempCallBacks.Values do
+   begin
+    FPrismSession.CallBacks.Register(vIPrismCallBack, APrismFormToConsolide);
+ //   if Assigned(vIPrismCallBack.CallBackEvent) then
+ //    APrismFormToConsolide.CallBacks.Register(vIPrismCallBack.Name, vIPrismCallBack.CallBackEvent)
+ //   else
+ //    APrismFormToConsolide.CallBacks.Register(vIPrismCallBack.Name, vIPrismCallBack.DefaultParameters);
+   end;
+  finally
+   FLock.EndRead;
   end;
 
-  FTempCallBacks.Clear;
+  Clear;
  end;
 end;
 
@@ -520,6 +658,8 @@ begin
    FPrismSession:= APrismSession;
 
  FTempCallBacks:= TDictionary<string, IPrismCallBack>.Create;
+
+ FLock:= TMultiReadExclusiveWriteSynchronizer.Create;
 end;
 
 function TPrismFormCallBacks.Register(AName: String; ACallBackEventProc: TCallBackEvent): IPrismCallBack;
@@ -532,7 +672,12 @@ begin
  begin
   vPrismCallBack:= TPrismCallBack.Create(AName, '', nil, ACallBackEventProc);
 
-  FTempCallBacks.Add(AName, vPrismCallBack);
+  FLock.BeginWrite;
+  try
+   FTempCallBacks.Add(AName, vPrismCallBack);
+  finally
+   FLock.EndWrite;
+  end;
 
   result:= vPrismCallBack;
  end;
@@ -540,7 +685,8 @@ end;
 
 destructor TPrismFormCallBacks.Destroy;
 begin
- FTempCallBacks.Clear;
+ Clear;
+
  FreeAndNil(FTempCallBacks);
 
  if Assigned(FPrismForm) then
@@ -548,6 +694,8 @@ begin
 
  if Assigned(FPrismSession) then
   FPrismSession:= nil;
+
+ FLock.Free;
 
  inherited;
 end;
@@ -567,7 +715,12 @@ begin
  begin
   vPrismCallBack:= TPrismCallBack.Create(AName, Parameters, nil, nil);
 
-  FTempCallBacks.Add(AName, vPrismCallBack);
+  FLock.BeginWrite;
+  try
+   FTempCallBacks.Add(AName, vPrismCallBack);
+  finally
+   FLock.EndWrite;
+  end;
 
   result:= vPrismCallBack;
  end;

@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -30,37 +36,52 @@ interface
 
 uses
   Rtti, Classes,
-  SysUtils, Generics.Collections, DB,
+  SysUtils,
+{$IFDEF MSWINDOWS}
+  {$IFNDEF FPC}
+  Windows,
+  {$ELSE}
+  Windows,
+  {$ENDIF}
+{$ENDIF}
+  Generics.Collections, DB,
   TypInfo,
 {$IFDEF HAS_UNIT_SYSTEM_UITYPES}
   System.UITypes,
 {$ENDIF}
-  Variants, Math
 {$IFDEF HAS_UNIT_SYSTEM_THREADING}
-  , System.Threading
+  System.Threading,
 {$ENDIF}
 {$IFNDEF FPC}
-  , Rest.Utils
+  Rest.Utils,
   {$IFDEF HAS_UNIT_SYSTEM_NETENCODING}
-  , System.NetEncoding
+  System.NetEncoding,
   {$ELSE}
-  , EncdDecd
+  EncdDecd,
   {$ENDIF}
 {$ELSE}
-  , base64, LCLIntf, URIParser
-{$ENDIF}
-{$IFDEF MSWINDOWS}
-  , Windows
+  base64, LCLIntf, URIParser,
 {$ENDIF}
 {$IFDEF FMX}
-  ,FMX.Controls, FMX.Forms, FMX.TabControl, FMX.Platform, FMX.Graphics
+  FMX.Controls, FMX.Forms, FMX.TabControl, FMX.Platform, FMX.Graphics,
 {$ELSE}
-  ,Controls, Forms, ComCtrls, Graphics
+  Controls, Forms, ComCtrls, Graphics,
 {$ENDIF}
 {$IFDEF DEVEXPRESS_AVAILABLE}
-  ,cxPC
+  cxPC,
 {$ENDIF}
-;
+  Variants, Math;
+
+
+{$IFDEF FPC}
+// FPC: declare as APIs que podem não existir nos headers
+function ProcessIdToSessionId(dwProcessId: DWORD; var pSessionId: DWORD): BOOL; stdcall;
+  external 'kernel32' name 'ProcessIdToSessionId';
+function OpenInputDesktop(dwFlags: DWORD; fInherit: BOOL; dwDesiredAccess: DWORD): THandle; stdcall;
+  external 'user32' name 'OpenInputDesktop';
+function CloseDesktop(hDesktop: THandle): BOOL; stdcall;
+  external 'user32' name 'CloseDesktop';
+{$ENDIF}
 
 
 {$IFDEF FPC}
@@ -125,6 +146,10 @@ procedure UnRegisterAllClassD2Bridge;
 //Fix Clear in TList
 procedure ClearInterfaceList(var AList: TList<IInterface>);
 procedure FreeInterfaceList(var AList: TList<IInterface>);
+
+{$IFDEF MSWINDOWS}
+function IsRunningAsService: Boolean;
+{$ENDIF}
 
 implementation
 
@@ -994,5 +1019,41 @@ begin
   else
     Result := Exception.Create(E.Message);
 end;
+
+
+{$IFDEF MSWINDOWS}
+function IsRunningAsService: Boolean;
+var
+  SessionId: DWORD;
+  hDesk: THandle;
+begin
+  Result := False;
+
+  // 1) Estamos na sessão 0?
+  if not ProcessIdToSessionId(GetCurrentProcessId, SessionId) then
+    Exit(False);
+  if SessionId <> 0 then
+    Exit(False);
+
+  // 2) Temos desktop de entrada (interativo)? Se sim, não é serviço.
+  SetLastError(0);
+  hDesk := OpenInputDesktop(0, False, DESKTOP_SWITCHDESKTOP);
+  if hDesk <> 0 then
+  begin
+    CloseDesktop(hDesk);
+    Exit(False);
+  end;
+
+  // Sessão 0 + sem desktop interativo => serviço
+  Result := True;
+end;
+{$ELSE}
+function IsRunningAsService: Boolean;
+begin
+  // Não-Windows: ajuste a sua própria heurística (systemd, etc.)
+  Result := False;
+end;
+{$ENDIF}
+
 
 end.

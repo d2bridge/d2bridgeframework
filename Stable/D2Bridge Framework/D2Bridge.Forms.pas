@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -55,6 +61,7 @@ uses
   D2Bridge.Prism.Button, D2Bridge.Types, D2Bridge.Forms.Helper, D2Bridge.Camera.Image, D2Bridge.QRCodeReader.Image,
   Prism.Interfaces, Prism.Session, Prism.Types, Prism.Forms.Controls,
   Prism.StringGrid, Prism.Card.Grid.DataModel, Prism.Card.Model,
+  D2Bridge.Rest,
   {$IFNDEF FMX}
   Prism.DBGrid,
   {$ENDIF}
@@ -84,6 +91,11 @@ type
  IPrismCardModel = Prism.Interfaces.IPrismCardModel;
  IPrismKanban = Prism.Interfaces.IPrismKanban;
  IPrismKanbanColumn = Prism.Interfaces.IPrismKanbanColumn;
+ //Rest
+ TPrismHTTPRequest = D2Bridge.Rest.TPrismHTTPRequest;
+ TPrismHTTPResponse = D2Bridge.Rest.TPrismHTTPResponse;
+ TD2BridgeRestRouteCallBack = D2Bridge.Rest.TD2BridgeRestRouteCallBack;
+ TD2BridgeRestRequest = D2Bridge.Rest.TD2BridgeRestRequest;
 
 
 {$REGION 'Helpers'}
@@ -169,8 +181,8 @@ type
    function GetText: String;
    procedure SetText(AText: String);
    procedure CheckInstanceHelper;
-    function GetCaption: string;
-    procedure SetCaption(const Value: string);
+   function GetCaption: string;
+   procedure SetCaption(const Value: string);
   public
    procedure Clear;
    procedure InstanceHelper;
@@ -460,6 +472,7 @@ type
    procedure ClosePopup(AName: String); overload;
    procedure ShowPopupModal(AName: String);
    procedure DoShow; override;
+   procedure DoDeactivate;
    //DO
    procedure DoPopupOpened(AName: string);
    procedure DoPopupClosed(AName: string);
@@ -508,12 +521,13 @@ type
    Function Showing: Boolean;
    function D2BridgeItems: TD2BridgeItems;
 {$ENDIF}
+   function APPConfig: ID2BridgeAPPConfig;
    function RootDirectory: string;
    destructor Destroy; override;
    procedure Release;
 
    class function IsD2BridgeContext: Boolean;
-
+   class function IsD2DockerContext: Boolean; overload;
    function isNestedContext: boolean;
 
    function CSSClass: TCSSClass;
@@ -838,8 +852,7 @@ begin
  end;
 
  if Action <> TCloseAction.caFree then
-  if Assigned(OnDeactivate) then
-   OnDeactivate(Self);
+  DoDeactivate;
 
  if FShowing then
  begin
@@ -867,6 +880,13 @@ begin
   inherited;
  {$ENDIF}
 end;
+
+
+function TD2BridgeForm.APPConfig: ID2BridgeAPPConfig;
+begin
+ result:= D2BridgeManager.ServerController.AppConfig;
+end;
+
 
 {$IFDEF D2BRIDGE}
 procedure TD2BridgeForm.DoCloseShowmodal;
@@ -911,6 +931,7 @@ begin
   inherited;
 end;
 {$ENDIF}
+
 
 {$IFDEF VCL}
 procedure TD2BridgeForm.DoDestroy;
@@ -1105,8 +1126,8 @@ begin
   end;
 
 
-  if FPopupsShowing.Contains(AName) then
-   FPopupsShowing.Remove(AName);
+  if FPopupsShowing.Contains(Uppercase(AName)) then
+   FPopupsShowing.Remove(Uppercase(AName));
 
   if Assigned(FOnClosePopup) then
    FOnClosePopup(AName)
@@ -1151,8 +1172,8 @@ begin
   end;
 
   vNestedFormName:= '';
-  if not FPopupsShowing.Contains(AName) then
-  FPopupsShowing.Add(AName);
+  if not FPopupsShowing.Contains(UpperCase(AName)) then
+  FPopupsShowing.Add(UpperCase(AName));
 
   //Check Nested
   {$REGION 'Check Nested'}
@@ -1214,6 +1235,19 @@ begin
  {$ELSE}
  Result := False;
  {$ENDIF}
+end;
+
+class function TD2BridgeForm.IsD2DockerContext: Boolean;
+begin
+ if IsD2BridgeContext then
+ begin
+  {$IFDEF D2DOCKER}
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+ end else
+  result:= false;
 end;
 
 function TD2BridgeForm.isNestedContext: boolean;
@@ -1664,8 +1698,8 @@ begin
    end;
 
    vNestedFormName:= '';
-   if not FPopupsShowing.Contains(AName) then
-   FPopupsShowing.Add(AName);
+   if not FPopupsShowing.Contains(UpperCase(AName)) then
+   FPopupsShowing.Add(UpperCase(AName));
 
    //Check Nested
    {$REGION 'Check Nested'}
@@ -1688,6 +1722,7 @@ begin
       (vD2BridgeFormNested.D2Bridge.FrameworkForm as TPrismForm).FormPageState:= PageStateLoading;
 
       vD2BridgeFormNested.PopupName:= AName;
+      vD2BridgeFormNested.FShowing:= false;
       vD2BridgeFormNested.DoShow;
 
 //      try
@@ -1701,8 +1736,8 @@ begin
 //       end;
 //      end;
 
-      if not TD2BridgeForm(D2Bridge.Nested(I).FormAOwner).PopupsShowing.Contains(AName) then
-      TD2BridgeForm(D2Bridge.Nested(I).FormAOwner).PopupsShowing.Add(AName);
+      if not TD2BridgeForm(D2Bridge.Nested(I).FormAOwner).PopupsShowing.Contains(UpperCase(AName)) then
+      TD2BridgeForm(D2Bridge.Nested(I).FormAOwner).PopupsShowing.Add(UpperCase(AName));
 
       //TD2BridgePrismForm(D2Bridge.Nested(I).FrameworkForm).UpdateControls;
 
@@ -1713,7 +1748,11 @@ begin
 
    PrismSession.ExecJS
     (
-     'incd2bridgepopup(new bootstrap.Modal(document.querySelector(''[id='+ AnsiUpperCase(AName) +' i]''))); ',
+     'requestAnimationFrame(() => { ' +
+     ' setTimeout(() => { ' +
+     '  incd2bridgepopup(new bootstrap.Modal(document.querySelector(''[id='+ AnsiUpperCase(AName) +' i]''))); '+
+     ' },100); '+
+     '});',
      true
     );
   end;
@@ -1983,8 +2022,10 @@ begin
 
   ShowPopup(vPopupName);
 
-  if FPopupsShowing.Contains(vPopupName) then
-   D2Bridge.PrismSession.Lock(UpperCase(vPopupName));
+  if D2Bridge.PrismSession.LockExists(UpperCase(vPopupName)) then
+   D2Bridge.PrismSession.UnLock(UpperCase(vPopupName));
+
+  D2Bridge.PrismSession.Lock(UpperCase(vPopupName));
 
   if (not Assigned(self)) or (not Assigned(D2Bridge)) or (D2Bridge.PrismSession.Destroying) or D2Bridge.PrismSession.Closing then
    Abort;
@@ -2055,6 +2096,7 @@ procedure TD2BridgeForm.ClosePopup(AName: String);
 var
  vCanClosePopup: Boolean;
 begin
+ try
   if not Assigned(FOnClosePopup) then
   begin
    vCanClosePopup:= true;
@@ -2063,10 +2105,18 @@ begin
     exit;
   end;
 
-  if FPopupsShowing.Contains(AName) then
-  FPopupsShowing.Remove(AName);
+  if FPopupsShowing.Contains(Uppercase(AName)) then
+  FPopupsShowing.Remove(Uppercase(AName));
 
-  D2Bridge.PrismSession.ExecJS('document.querySelector(''[id=BUTTONCLOSE_'+ AnsiUpperCase(AName) +' i]'').click();', true);
+  D2Bridge.PrismSession.ExecJS(
+   'requestAnimationFrame(() => { ' +
+   ' setTimeout(() => { ' +
+   '  document.querySelector(''[id=BUTTONCLOSE_'+ AnsiUpperCase(AName) +' i]'').click(); ' +
+   ' },100); '+
+   '});'
+   , true);
+ except
+ end;
 end;
 
 procedure TD2BridgeForm.PageLoaded;
@@ -2345,8 +2395,7 @@ begin
 
  if vOtherFormInFront then
   if Assigned(vActualForm) then
-   if Assigned(vActualForm.OnDeactivate) then
-    vActualForm.OnDeactivate(self);
+   vActualForm.DoDeactivate;
 
  FD2Bridge.BaseClass.FrameworkForm.Show;
 
@@ -2466,6 +2515,21 @@ begin
  {$ENDIF}
 end;
 
+procedure TD2BridgeForm.DoDeactivate;
+var
+ I: Integer;
+begin
+ try
+  while FPopupsShowing.Count > 0 do
+  begin
+   ClosePopup(FPopupsShowing[Pred(FPopupsShowing.Count)]);
+  end;
+ except
+ end;
+
+ if Assigned(OnDeactivate) then
+  OnDeactivate(self);
+end;
 
 procedure TD2BridgeForm.DoTagHTML(const TagString: string;
   var ReplaceTag: string);
@@ -2632,8 +2696,7 @@ end;
 {$ELSE}
 function TD2BridgeForm.Close: TCloseAction;
 begin
- if Assigned(OnDeactivate) then
-  OnDeactivate(Self);
+ DoDeactivate;
  {$IFDEF VER11}
   //inherited;
  {$ELSE}
@@ -3702,7 +3765,10 @@ begin
 {$IFDEF FPC}
  FD2BridgeThreadTimer:= TD2BridgeThreadTimer.Create;
  FD2BridgeThreadTimer.OnTimer:= Self.TimerD2BridgeThread;
- FD2BridgeThreadTimer.Interval:= Self.Interval;
+ if Self.Interval = 0 then
+  FD2BridgeThreadTimer.Interval:= 1000
+ else
+  FD2BridgeThreadTimer.Interval:= Self.Interval;
  FD2BridgeThreadTimer.Enabled:= False;
 {$ENDIF}
 
@@ -3716,7 +3782,7 @@ begin
   if Not Assigned(FD2BridgeForm) then
   begin
 {$IFDEF MSWINDOWS}
-   if IsDebuggerPresent then
+   if IsDebuggerPresent and (not IsD2DockerContext) then
     raise Exception.Create('Owner of this Timer ' + self.Name + ' is not D2BridgeForm - ERROR 0098-1');
 {$ENDIF}
   end;
@@ -3963,6 +4029,11 @@ begin
   if not TagIsD2BridgeFormComponentHelper(tag, 'ItemIndex') then
   begin
    TD2BridgeFormComponentHelper(Tag).Value['ItemIndex']:= (inherited {$IFnDEF FPC}ItemIndex{$ELSE}GetItemIndex{$ENDIF});
+  end;
+
+  if not TagIsD2BridgeFormComponentHelper(tag, 'Caption') then
+  begin
+   TD2BridgeFormComponentHelper(Tag).Value['Caption']:= (inherited caption);
   end;
  end;
 end;

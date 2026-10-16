@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -71,6 +77,8 @@ type
    Procedure SetValidationGroup(AValidationGroup: Variant);
    procedure ProcessVCLStyles;
    function CallBackEventPopup(EventParams: TStrings): string;
+   //Fix CSS Class
+   function ParserCSSCLass: string;
    //RegisterVCLObjec Class
    class Procedure RegisterVCLObjClass;
   public
@@ -333,7 +341,16 @@ begin
 
      Break;
     end;
-  end;
+  end else
+  for xJ := 0 to PopupMenu.Items[xI].{$IFNDEF FMX}Count{$ELSE}ItemsCount{$ENDIF}-1 do
+   if PopupMenu.Items[xI].Items[xJ].Name = EventParams.Strings[0] then
+   begin
+    if (PopupMenu.Items[xI].Items[xJ].Enabled) and (PopupMenu.Items[xI].Items[xJ].Visible) then
+      PopupMenu.Items[xI].Items[xJ].{$IFNDEF FMX}Click{$ELSE}ClickEx{$ENDIF};
+
+    Break;
+   end;
+
  end;
 {$ENDIF}
 end;
@@ -417,11 +434,11 @@ begin
  {$ENDIF}
    or SameText(OverrideVCL(Item.ClassType).ClassName, 'TDBText') then
  begin
-  if Pos('white-space: pre-line;', result) <= 0 then
+  if Pos('white-space:pre-line;', result) <= 0 then
   begin
    if result <> '' then
     Result:= Result + ' ';
-   Result:= Result + 'white-space: pre-line;';
+   Result:= Result + 'white-space:pre-line;';
   end;
  end;
 
@@ -452,6 +469,16 @@ end;
 function TD2BridgeItemVCLObj.GetValidationGroup: Variant;
 begin
  Result:= FValidationGroup;
+end;
+
+function TD2BridgeItemVCLObj.ParserCSSCLass: string;
+begin
+ Result:= Trim(FBridgeVCLObj.CSSClass+' '+CSSClasses);
+
+ {$REGION 'Badge'}
+  if Pos('d2bridgelabelbuttonbadge', CSSClasses) > 0 then
+   result:= CSSClasses;
+ {$ENDREGION}
 end;
 
 procedure TD2BridgeItemVCLObj.PreProcess;
@@ -489,13 +516,13 @@ begin
 {$IFDEF D2BRIDGE}
  if BaseClass.VCLStyles then
  begin
-  vCSSClasses:= '';
-  vHTMLStyle:= '';
+  vCSSClasses:= CSSClasses;
+  vHTMLStyle:= HTMLStyle;
 
   FVCLObjStyle.ProcessVCLStyles(vCSSClasses, vHTMLStyle);
 
-  CSSClasses:= Trim(' ' + CSSClasses + ' ' + vCSSClasses);
-  HTMLStyle:= Trim(' ' + HTMLStyle + ' ' + vHTMLStyle);
+  CSSClasses:= Trim(vCSSClasses);
+  HTMLStyle:= Trim(vHTMLStyle);
  end;
 {$ENDIF}
 end;
@@ -605,20 +632,16 @@ end;
 
 procedure TD2BridgeItemVCLObj.Render;
 var
-  VCLClass, NewClass: TClass;
+  NewClass: TClass;
   //RttiVCLClass, RttiNewClass: TRttiType;
   NewComponent: TPrismControl;
   //Context: TRttiContext;
-  ComponentProperty, ComponentPropertyNew: TRttiProperty;
-  NomePropriedades: TStringList;
-  AuxCompView, AuxCompHide: TComponent;
 begin
  inherited;
 {$IFDEF D2BRIDGE}
  if (not Renderized) and Assigned(Item) then
  begin
   //  VCLObj.GetInterface(ID2BridgeVCLObj, FBridgeVCLObj);
-  VCLClass:= FBridgeVCLObj.VCLClass;
 
   FBridgeVCLObj.FrameworkItemClass.Clear;
   NewClass:= FBridgeVCLObj.FrameworkItemClass.FrameworkClass;
@@ -841,7 +864,7 @@ begin
 
 
    //Default TAG
-   BaseClass.HTML.Render.Body.Add('{%'+TrataHTMLTag(ItemPrefixID+' class="'+Trim(CSSHTMLComponentByVCLClass+' '+CSSClasses+ TagClassDropDown)+'" style="'+GetHTMLStyle+'" '+ GetHTMLExtras + DropDownHTMLExtras ) +'%}');
+   BaseClass.HTML.Render.Body.Add('{%'+TrataHTMLTag(ItemPrefixID+' class="'+Trim(ParserCSSCLass + ' ' + TagClassDropDown)+'" style="'+GetHTMLStyle+'" '+ GetHTMLExtras + DropDownHTMLExtras ) +'%}');
 
 
    if (Assigned(Item)) and Supports(FBridgeVCLObj.FrameworkItemClass, ID2BridgeFrameworkItemButton) then
@@ -972,5 +995,3 @@ finalization
  UnRegisterAllClassD2Bridge;
 
 end.
-
-

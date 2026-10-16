@@ -39,10 +39,7 @@ function startPrismServer() {
         connectionInfo.protocol = "ws";
     }
 
-    if (connectionInfo.pathPrefix !== "/") {
-        prismws = new WebSocket(connectionInfo.protocol + '://' + hostws + '/websocket' + connectionInfo.pathPrefix + '/connectionparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
-    } else
-        prismws = new WebSocket(connectionInfo.protocol + '://' + hostws + '/websocket' + '/connectionparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
+    prismws = new WebSocket(connectionInfo.protocol + '://' + hostws + connectionInfo.pathPrefix + '/websocket' + '/connectionparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
 
     prismws.addEventListener('open', function(event) {
         prismwsconnected = true;

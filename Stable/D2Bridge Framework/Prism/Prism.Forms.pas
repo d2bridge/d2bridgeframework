@@ -1,19 +1,25 @@
-ï»¿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -90,6 +96,7 @@ type
    FSimpleCallBacks: TList<TSimpleCallBack>;
    FD2BridgeForm: TD2BridgeForm;
    FDestroying: Boolean;
+   FLock: TMultiReadExclusiveWriteSynchronizer;
    procedure SetName(AName: String); reintroduce;
    function GetName: String; reintroduce;
    function GetControls: TList<IPrismControl>;
@@ -357,8 +364,8 @@ begin
 
    FTimerObserver.Terminate;
   end;
-  //Este Sleep Ã© necessÃ¡rio por que o Timer acima
-  //vai tentar chamar o OnTimer e o PrismForm nÃ£o existe
+  //Este Sleep é necessário por que o Timer acima
+  //vai tentar chamar o OnTimer e o PrismForm não existe
   //mais
   //sleep(1000);
   //FTimerObserver:= nil;
@@ -906,11 +913,17 @@ end;
 procedure TPrismForm.ProcessCallBackTagHTML(var HTMLText: String);
 var
  I: Integer;
+ vCallBacks: TList<IPrismCallBack>;
 begin
- for I := 0 to Pred(Session.CallBacks.Items.Count) do
- if Session.CallBacks.Items.Values.ToArray[I].PrismForm = (self as IPrismForm) then
- begin
-  HTMLText:= StringReplace(HTMLText, '{{'+Session.CallBacks.Items.Values.ToArray[I].Name+'}}', Session.CallBacks.CallBackJS(Session.CallBacks.Items.Values.ToArray[I].Name, true, FormUUID, '', true), [rfReplaceAll, rfIgnoreCase]);
+ vCallBacks:= Session.CallBacks.GetCallBacks(self);
+
+ try
+  for I := 0 to Pred(vCallBacks.Count) do
+  begin
+   HTMLText:= StringReplace(HTMLText, '{{'+vCallBacks[I].Name+'}}', Session.CallBacks.CallBackJS(vCallBacks[I].Name, true, FormUUID, '', true), [rfReplaceAll, rfIgnoreCase]);
+  end;
+ finally
+  vCallBacks.Free;
  end;
 
  for I := 0 to Pred(FSimpleCallBacks.Count) do
@@ -1052,14 +1065,14 @@ var
   I: Integer;
   vSimpleCallBack: TSimpleCallBack;
 begin
-  // Crie uma expressÃ£o regular para encontrar todas as ocorrÃªncias de {{Texto}}
+  // Crie uma expressão regular para encontrar todas as ocorrências de {{Texto}}
 {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}
   Regex := TRegEx.Create('{{(?!_).*?}}', [roIgnoreCase, roMultiLine]);
 {$ELSE}
   Regex := TRegExpr.Create('\{\{.*?\}\}');
 {$ENDIF}
 
-  // Inicialize as variÃ¡veis
+  // Inicialize as variáveis
   StartPos := 1;
 
   // Comece a percorrer o HTMLText
@@ -1067,14 +1080,14 @@ begin
   begin
    try
 {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}
-    // Encontre a prÃ³xima correspondÃªncia
+    // Encontre a próxima correspondência
     Match := Regex.Match(HTMLText, StartPos);
 
-    // Se nÃ£o houver correspondÃªncia, saia do loop
+    // Se não houver correspondência, saia do loop
     if not Match.Success then
       Break;
 {$ELSE}
-    // Encontre a prÃ³xima correspondÃªncia, Se nÃ£o houver correspondÃªncia, saia do loop
+    // Encontre a próxima correspondência, Se não houver correspondência, saia do loop
     if not Regex.Exec(HTMLText.Substring(StartPos)) then
       Break;
 
@@ -1093,7 +1106,7 @@ begin
     vIsSimpleCallBack:= false;
     vIsStaticCallBack:= false;
 
-    // Obtenha a correspondÃªncia e o texto entre {{ e }}
+    // Obtenha a correspondência e o texto entre {{ e }}
     TagString := {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}Match.Value{$ELSE}Regex.Match[0]{$ENDIF};
     TagStringJust:= Copy(TagString, 3, length(TagString)-4);
     ReplaceTag := {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}Match.Value{$ELSE}Regex.Match[0]{$ENDIF};//Match.Groups[1].Value;
@@ -1171,16 +1184,16 @@ begin
 
 
 {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}
-    // Substitua a correspondÃªncia pelo resultado do evento
+    // Substitua a correspondência pelo resultado do evento
     HTMLText := HTMLText.Remove(Match.Index-1, Match.Length).Insert(Match.Index-1, ReplaceTag);
 
-    // Atualize a posiÃ§Ã£o de inÃ­cio
+    // Atualize a posição de início
     StartPos := Match.Index -1 + Length(ReplaceTag);
 {$ELSE}
-    // Substitua a correspondÃªncia pelo resultado do evento
+    // Substitua a correspondência pelo resultado do evento
     HTMLText := HTMLText.Remove(Regex.MatchPos[0]{$IFDEF FPC} + StartPos - 1{$ENDIF}, Regex.MatchLen[0]).Insert(Regex.MatchPos[0]{$IFDEF FPC} + StartPos - 1{$ENDIF}, ReplaceTag);
 
-    // Atualize a posiÃ§Ã£o de inÃ­cio
+    // Atualize a posição de início
     StartPos := Regex.MatchPos[0] + Length(ReplaceTag){$IFDEF FPC} + StartPos{$ENDIF};
 {$ENDIF}
    except
@@ -1214,14 +1227,14 @@ var
   StartPos, EndPos: Integer;
   AContext, TagString, TagStringJust, ATerm, ATranslated: string;
 begin
- // Crie uma expressÃ£o regular para encontrar todas as ocorrÃªncias de {{_Texto_}}
+ // Crie uma expressão regular para encontrar todas as ocorrências de {{_Texto_}}
 {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}
   Regex := TRegEx.Create('{{_.*?(\.\w+)?_}}', [roIgnoreCase, roMultiLine]);
 {$ELSE}
   Regex := TRegExpr.Create('\{\{_.*?(\.\w+)?_\}\}');
 {$ENDIF}
 
- // Inicialize as variÃ¡veis
+ // Inicialize as variáveis
  StartPos := 1;
  EndPos := Length(HTMLText);
 
@@ -1229,22 +1242,22 @@ begin
  while StartPos <= EndPos do
  begin
 {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}
-  // Encontre a prÃ³xima correspondÃªncia
+  // Encontre a próxima correspondência
   Match := Regex.Match(HTMLText, StartPos);
   ATranslated:= '';
 
-  // Se nÃ£o houver correspondÃªncia, saia do loop
+  // Se não houver correspondência, saia do loop
   if not Match.Success then
    Break;
 {$ELSE}
-  // Encontre a prÃ³xima correspondÃªncia, Se nÃ£o houver correspondÃªncia, saia do loop
+  // Encontre a próxima correspondência, Se não houver correspondência, saia do loop
   ATranslated:= '';
 
   if not Regex.Exec(HTMLText.Substring(StartPos)) then
    Break;
 {$ENDIF}
 
-  // Obtenha a correspondÃªncia e o texto entre {{ e }}
+  // Obtenha a correspondência e o texto entre {{ e }}
   TagString := {$IFDEF HAS_UNIT_REGULAREXPRESSIONSAPI}Match.Value{$ELSE}Regex.Match[0]{$ENDIF};
   TagStringJust:= Copy(TagString, 4, length(TagString)-6);
 
@@ -1267,7 +1280,7 @@ begin
   else
    ATranslated := Match.Value;
 
-  // Atualize a posiÃ§Ã£o de inÃ­cio
+  // Atualize a posição de início
   StartPos := Match.Index -1 + Length(ATranslated);
 {$ELSE}
   if ATranslated <> '' then
@@ -1275,7 +1288,7 @@ begin
   else
    ATranslated := Regex.Match[0];
 
-  // Atualize a posiÃ§Ã£o de inÃ­cio
+  // Atualize a posição de início
   StartPos := Regex.MatchPos[0] + Length(ATranslated){$IFDEF FPC} + StartPos{$ENDIF};
 {$ENDIF}
  end;
@@ -1459,6 +1472,10 @@ begin
     if not FFormComponentsUpdating then
     begin
      //Update Translation TAG
+     ScriptJS.Text:=
+      'requestAnimationFrame(() => { ' +
+      ScriptJS.Text +
+      '});';
      vTextHTML:= ScriptJS.Text;
      ProcessTagHTML(vTextHTML);
      ProcessTagTranslate(vTextHTML);
@@ -1480,4 +1497,3 @@ begin
 end;
 
 end.
-

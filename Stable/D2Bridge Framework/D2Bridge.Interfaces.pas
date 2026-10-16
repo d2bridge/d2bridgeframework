@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -29,7 +35,7 @@ unit D2Bridge.Interfaces;
 interface
 
 uses
-  Classes, SysUtils, Generics.Collections, D2Bridge.JSON,
+  Classes, SysUtils, Generics.Collections, IniFiles,
 {$IFDEF HAS_UNIT_SYSTEM_UITYPES}
   System.UITypes,
 {$ENDIF}
@@ -46,8 +52,8 @@ uses
   jpeg,
   {$IFEND}
 {$ENDIF}
-  D2Bridge.HTML.CSS, D2Bridge.Types, Prism.Types, D2Bridge.Lang.Core,
-  Prism.Interfaces, D2Bridge.Image, D2Bridge.Image.Interfaces;
+  D2Bridge.JSON, D2Bridge.HTML.CSS, D2Bridge.Types, Prism.Types, D2Bridge.Lang.Core,
+  Prism.Interfaces, D2Bridge.Image, D2Bridge.Image.Interfaces, D2Bridge.Rest.Interfaces;
 
 //{$M+}
 
@@ -103,7 +109,17 @@ type
  ID2BridgeAPIAuth = interface;
  ID2BridgeAPIEvolution = interface;
  ID2BridgeAPIStorage = interface;
-// ID2BridgeAPIStorageAmazonS3 = interface;
+ ID2BridgeAPID2Docker = interface;
+ ID2BridgeAPPConfig = interface;
+ ID2BridgeAPPConfigCustom = interface;
+ ID2BridgeAPPConfigCustomItem = interface;
+ ID2BridgeAPPConfigDatabaseParam = interface;
+ ID2BridgeAPPConfigVersion = interface;
+ ID2BridgeAPPConfigDatabase = interface;
+ ID2BridgeAPPConfigPath = interface;
+ ID2BridgeAPPConfigINIConfig = interface;
+
+
 
 {$IFNDEF FMX}
  ID2BridgeItemHTMLDBImage = interface;
@@ -152,8 +168,19 @@ type
    procedure SetServerAppAuthor(const Value: string);
    procedure SetServerAppDescription(const Value: string);
    procedure SetServerAppTitle(const Value: string);
+   function GetAPPSignature: string;
+   procedure SetAPPSignature(const Value: string);
 
    function ServerUUID: string;
+
+   function IsD2DockerContext: Boolean;
+
+   function D2DockerInstanceAlias: string;
+
+{$IFDEF D2DOCKER}
+   procedure StartD2Docker;
+{$ENDIF}
+
    function Started: boolean;
    procedure StartServer;
    procedure StopServer;
@@ -163,6 +190,14 @@ type
    function SendMessageToSession(ASessionUUID: String; AMessage: String): Boolean;
    procedure SendMessageToAllSession(AMessage: String);
    function ServerInfoConsole: TStrings;
+   function GetServerCompiler: string;
+   function GetServerSO: string;
+
+   function NeedConsole: boolean;
+
+   function AppConfig: ID2BridgeAPPConfig;
+
+   function APPVersion: ID2BridgeAPPConfigVersion;
 
    property Languages: TD2BridgeLangs read GetLanguages write SetLanguages;
    property Language: TD2BridgeLang write SetLanguage;
@@ -177,6 +212,9 @@ type
    property ServerDescription: String read GetServerDescription write SetServerDescription;
    property APPName: string read GetAPPName write SetAPPName;
    property APPDescription: string read GetAPPDescription write SetAPPDescription;
+   property APPSignature: string read GetAPPSignature write SetAPPSignature;
+   property ServerSO: string read GetServerSO;
+   property ServerCompiler: string read GetServerCompiler;
  end;
 
 
@@ -186,7 +224,9 @@ type
    function Auth: ID2BridgeAPIAuth;
    //function Evolution: ID2BridgeAPIEvolution;
    function Storage: ID2BridgeAPIStorage;
-
+{$IFDEF D2DOCKER}
+   function D2Docker: ID2BridgeAPID2Docker;
+{$ENDIF}
  end;
 
 
@@ -213,6 +253,7 @@ type
 
    function API: ID2BridgeAPI;
    function CSSClass: TCSSClass;
+   function D2BridgeVersion: string;
 
    property Languages: TD2BridgeLangs read GetLanguages write SetLanguages;
    property Prism: IPrismBaseClass read GetPrism write SetPrism;
@@ -1008,36 +1049,42 @@ end;
   function ImageICOFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
   function ImageICOFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; AImagePosition: TD2BridgeCardImagePosition = D2BridgeCardImagePositionTop; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageTOPFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageTOPFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageTOPFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageTOPFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageTOPFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageBOTTOMFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageBOTTOMFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageBOTTOMFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageBOTTOMFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageBOTTOMFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageLEFTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageLEFTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageLEFTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageLEFTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageLEFTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageRIGHTFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageRIGHTFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageRIGHTFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageRIGHTFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageRIGHTFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
   function ImageFULLFromLocal(LocalFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageFULLFromURL(URLFromImage: string = ''; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
   function ImageFULLFromTImage(Image: TImage = nil; AColSize: string = ''; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
 {$IFNDEF FMX}
-  function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage;
+  function ImageFULLFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
+  function ImageFULLFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AColSize: string = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLCardImage; overload;
 {$ENDIF}
 
   property Color: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetColor write SetColor;
@@ -1272,7 +1319,7 @@ end;
 
   procedure Default;
 
-  procedure ProcessVCLStyles(out CSSClasses: string; out HTMLStyle: string);
+  procedure ProcessVCLStyles(var CSSClasses, HTMLStyle: string);
 
   property FontSize: {$IFNDEF FMX}Integer{$ELSE}Single{$ENDIF} read GetFontSize write SetFontSize;
   property FontStyles: TFontStyles read GetFontStyles write SetFontStyles;
@@ -1390,6 +1437,37 @@ end;
  end;
 
 
+ ID2BridgeItemHTMLBadge = interface(ID2BridgeItem)
+  ['{1A26CEDD-CF4A-42D9-A827-A4CAF7B5E50E}']
+   //Function Items: ID2BridgeAddItems;
+
+   function PrismBadge: IPrismBadge;
+ end;
+
+
+ ID2BridgeItemHTMLBadgeButton = interface(ID2BridgeItemHTMLBadge)
+  ['{75E2E16B-0EAE-429D-A878-E35A8232F557}']
+   function GetTopPosition: boolean;
+   function GetIndicator: Boolean;
+   procedure SetTopPosition(const Value: boolean);
+   procedure SetIndicator(const Value: Boolean);
+
+   function LabelStyles: ID2BridgeHTMLTag;
+
+   property TopPosition: boolean read GetTopPosition write SetTopPosition;
+   property Indicator: Boolean read GetIndicator write SetIndicator;
+ end;
+
+
+ ID2BridgeItemHTMLBadgeText = interface(ID2BridgeItemHTMLBadge)
+  ['{F9D7D922-7B68-45FF-96BD-3F4E448E0904}']
+   function GetPill: boolean;
+   procedure SetPill(const Value: boolean);
+
+   property Pill: boolean read GetPill write SetPill;
+ end;
+
+
  ID2BridgeItemHTMLQRCode = interface(ID2BridgeItem)
   ['{E417560F-F904-4D9F-9251-8E5FF8D53C0B}']
 
@@ -1432,7 +1510,27 @@ end;
 
  ID2BridgeItemHTMLSideMenu = interface(ID2BridgeItem)
  ['{B71F9BD5-9832-4420-877F-75508EC3F7C5}']
+   function GetTitle: string;
+   procedure SetTitle(const Value: string);
+   function GetColor: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF};
+   function GetDark: boolean;
+   function GetMenuTextColor: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF};
+   function GetTitleColor: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF};
+   procedure SetColor(const Value: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF});
+   procedure SetDark(const Value: boolean);
+   procedure SetMenuTextColor(const Value: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF});
+   procedure SetTitleColor(const Value: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF});
+
    function Options: IPrismSideMenu;
+
+   function AccessoryItems: ID2BridgeAddItems;
+   function Image: ID2BridgeImage;
+
+   property Title: string read GetTitle write SetTitle;
+   property Dark: boolean read GetDark write SetDark;
+   property Color: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetColor write SetColor;
+   property TitleColor: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetTitleColor write SetTitleColor;
+   property MenuTextColor: {$IFNDEF FMX}TColor{$ELSE}TAlphaColor{$ENDIF} read GetMenuTextColor write SetMenuTextColor;
  end;
 
 
@@ -1659,6 +1757,15 @@ end;
  end;
 
 
+ ID2BridgeItemHTMLChart = interface(ID2BridgeItem)
+  ['{F64F9848-87BF-4130-8270-7B38A4CBEA32}']
+ end;
+
+
+ ID2BridgeItemHTMLChartBar = interface(ID2BridgeItemHTMLChart)
+  ['{80A560DB-B9B9-4943-8631-5BD7ADE17D84}']
+ end;
+
 
 {$IFNDEF FMX}
  ID2BridgeItemHTMLDBImage = interface(ID2BridgeItem)
@@ -1667,9 +1774,12 @@ end;
    function GetDataSource: TDataSource;
    procedure SetDataFieldImagePath(AValue: String);
    function GetDataFieldImagePath: String;
+   procedure SetImageFolder(AValue: String);
+   function GetImageFolder: String;
 
    property DataSource: TDataSource read GetDataSource write SetDataSource;
    property DataFieldImagePath: String read GetDataFieldImagePath write SetDataFieldImagePath;
+   property ImageFolder: String read GetImageFolder write SetImageFolder;
  end;
 {$ENDIF}
 
@@ -1817,7 +1927,7 @@ end;
    procedure FormGroup(LabeledEdit: TLabeledEdit; AValidationGroup: Variant; ARequired: Boolean; AColSize: string = 'col-auto'; AItemID: string = ''; AHTMLinLine: Boolean = false; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''); overload;
    {$ENDIF}
    //function PanelGroup: ID2BridgeItemHTMLPanelGroup; overload;
-   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = 'col'; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
+   function PanelGroup(ATitle: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AColSize: string = ''; ACSSClass: String = PanelColor.default; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLPanelGroup;
 //   function Row: ID2BridgeItemHTMLRow; overload;
    function Row(ACSSClass: String = ''; AItemID: string = ''; AHTMLinLine: Boolean = false; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLRow;
    function HTMLDIV(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
@@ -1856,25 +1966,49 @@ end;
    function ImageFromLocal(APathFromImage: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
    function ImageFromTImage(ATImage: TImage; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLImage;
 {$IFNDEF FMX}
-   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage;
+   function ImageFromDB(ADataSource: TDataSource; ADataFieldImagePath: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
+   function ImageFromDB(AImageFolder: string; ADataSource: TDataSource; ADataFieldImageFile: string; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLDBImage; overload;
 {$ENDIF}
+   //Badge
+   function BadgeText(ComponentLabel: TComponent; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLBadgeText; overload;
+   function BadgePillText(ComponentLabel: TComponent; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLBadgeText; overload;
+   function BadgeButtonText(ComponentButton: TComponent; ComponentLabel: TComponent; ACSSClassButton: String = ''; ACSSClassLabel: String = ''; AHTMLExtrasButton: String = ''; AHTMLExtrasLabel: String = ''; AHTMLStyleButton: String = ''; AHTMLStyleLabel: String = ''): ID2BridgeItemHTMLBadgeButton; overload;
+   function BadgeButtonTopText(ComponentButton: TComponent; ComponentLabel: TComponent; ACSSClassButton: String = ''; ACSSClassLabel: String = ''; AHTMLExtrasButton: String = ''; AHTMLExtrasLabel: String = ''; AHTMLStyleButton: String = ''; AHTMLStyleLabel: String = ''): ID2BridgeItemHTMLBadgeButton; overload;
+   function BadgeButtonIndicator(ComponentButton: TComponent; ComponentLabel: TComponent; ACSSClassButton: String = ''; ACSSClassLabel: String = ''; AHTMLExtrasButton: String = ''; AHTMLExtrasLabel: String = ''; AHTMLStyleButton: String = ''; AHTMLStyleLabel: String = ''): ID2BridgeItemHTMLBadgeButton; overload;
+   //Kanban
    function Kanban(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLKanban;
-   //ColSize
-   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
+   //Col Size
+   function Col(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
    function Col2(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
-   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
-   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow;
+   function Col3(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   //Col Size Responsive
+   function Col(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColAuto(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col1(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col2(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col3(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col4(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col5(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col6(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col7(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col8(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col9(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col10(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col11(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function Col12(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
+   function ColFull(AAutoResponsive: boolean; ACSSClass: String = ''; AItemID: string = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''; AHTMLTag: String = 'div'): ID2BridgeItemHTMLRow; overload;
    //Markdown
    function MarkdownEditor(TextVCLItem: TComponent; AHeight: integer = 0; ACSSClass: String = ''; HTMLExtras: String = ''; HTMLStyle: String = ''): ID2BridgeItemHTMLMarkDownEditor; overload;
 {$IFNDEF FMX}
@@ -1894,6 +2028,152 @@ end;
    function QRCodeReader(AImage: TImage; AOnRead: TNotifyEventStr; AContinuousScan: Boolean = true; APressReturnKey: Boolean = false): ID2BridgeItemHTMLQRCodeReader; overload;
  end;
 
+
+
+ ID2BridgeAPPConfig = interface
+  ['{59841A53-C1D8-4987-975E-FDA856F052F8}']
+  function ServerPort(ADefaultPort: Integer = 8888): Integer;
+  function ServerName(ADefaultServerName: String = 'D2Bridge Server'): String;
+  function ServerDescription(ADefaultServerDescription: String = 'D2Bridge Primary Server'): String;
+
+  function FileINIConfig: TIniFile;
+
+  function Custom: ID2BridgeAPPConfigCustom;
+  function Database: ID2BridgeAPPConfigDatabase;
+  function DatabaseTenancy: ID2BridgeAPPConfigDatabase;
+  function Version: ID2BridgeAPPConfigVersion;
+  function Path: ID2BridgeAPPConfigPath;
+
+  function INIConfig: ID2BridgeAPPConfigINIConfig;
+ end;
+
+
+ ID2BridgeAPPConfigPath = interface
+  ['{8715E917-F6C5-464B-8715-A9EAE8FBFE8B}']
+   function GetData: string;
+   procedure SetData(const Value: string);
+
+   function App: string;
+   function wwwroot: string;
+   function DB: string;
+   function Script: string;
+
+   property Data: string read GetData write SetData;
+ end;
+
+
+ ID2BridgeAPPConfigCustom = interface
+  ['{5DD67840-CC26-4C71-AF09-D0AB81EB7A37}']
+   function GetItem(AKey: string): ID2BridgeAPPConfigCustomItem;
+
+   function Add: ID2BridgeAPPConfigCustomItem; overload;
+
+   procedure Add(AItem: ID2BridgeAPPConfigCustomItem); overload;
+
+   function Count: integer;
+
+   procedure Delete(AItem: ID2BridgeAPPConfigCustomItem); overload;
+   procedure Delete(AKey: string); overload;
+
+   procedure Clear;
+
+   property Item[AKey: string]: ID2BridgeAPPConfigCustomItem read GetItem;
+ end;
+
+
+ ID2BridgeAPPConfigCustomItem = interface
+  ['{AADAC68C-326E-49D3-931C-D9B1BEA943CD}']
+   function GetKey: string;
+   function GetValue: string;
+   procedure SetKey(const Value: string);
+   procedure SetValue(const Value: string);
+
+   property Key: string read GetKey write SetKey;
+   property Value: string read GetValue write SetValue;
+ end;
+
+
+ ID2BridgeAPPConfigDatabase = interface
+  ['{13FDCD0C-47AA-4801-B59D-5334BA47761C}']
+   function GetFirebird: ID2BridgeAPPConfigDatabaseParam;
+   function GetFirebird25: ID2BridgeAPPConfigDatabaseParam;
+   function GetFirebird30: ID2BridgeAPPConfigDatabaseParam;
+   function GetFirebird40: ID2BridgeAPPConfigDatabaseParam;
+   function GetFirebird50: ID2BridgeAPPConfigDatabaseParam;
+   function GetMariaDB: ID2BridgeAPPConfigDatabaseParam;
+   function GetMySQL: ID2BridgeAPPConfigDatabaseParam;
+   function GetPostgreSQL: ID2BridgeAPPConfigDatabaseParam;
+   function GetSQLServer: ID2BridgeAPPConfigDatabaseParam;
+   function GetOracle: ID2BridgeAPPConfigDatabaseParam;
+   function GetCustom: ID2BridgeAPPConfigDatabaseParam;
+
+   property Firebird: ID2BridgeAPPConfigDatabaseParam read GetFirebird;
+   property Firebird25: ID2BridgeAPPConfigDatabaseParam read GetFirebird25;
+   property Firebird30: ID2BridgeAPPConfigDatabaseParam read GetFirebird30;
+   property Firebird40: ID2BridgeAPPConfigDatabaseParam read GetFirebird40;
+   property Firebird50: ID2BridgeAPPConfigDatabaseParam read GetFirebird50;
+   property MariaDB: ID2BridgeAPPConfigDatabaseParam read GetMariaDB;
+   property MySQL: ID2BridgeAPPConfigDatabaseParam read GetMySQL;
+   property PostgreSQL: ID2BridgeAPPConfigDatabaseParam read GetPostgreSQL;
+   property SQLServer: ID2BridgeAPPConfigDatabaseParam read GetSQLServer;
+   property Oracle: ID2BridgeAPPConfigDatabaseParam read GetOracle;
+   property Custom: ID2BridgeAPPConfigDatabaseParam read GetCustom;
+ end;
+
+
+ ID2BridgeAPPConfigDatabaseParam = interface
+  ['{08DAC73B-05EA-4929-A8EA-3C34923108A9}']
+   function GetDatabase: string;
+   function GetDatabaseFile: string;
+   function GetHost: string;
+   function GetPassword: string;
+   function GetPort: Integer;
+   function GetUser: string;
+   procedure SetDatabase(const Value: string);
+   procedure SetDatabaseFile(const Value: string);
+   procedure SetHost(const Value: string);
+   procedure SetPassword(const Value: string);
+   procedure SetPort(const Value: Integer);
+   procedure SetUser(const Value: string);
+   property Database: string read GetDatabase write SetDatabase;
+   property DatabaseFile: string read GetDatabaseFile write SetDatabaseFile;
+   property Host: string read GetHost write SetHost;
+   property Password: string read GetPassword write SetPassword;
+   property Port: Integer read GetPort write SetPort;
+   property User: string read GetUser write SetUser;
+ end;
+
+
+ ID2BridgeAPPConfigVersion = interface
+  ['{4AD038BD-CE6A-4F4E-B12A-C2689011F833}']
+   function GetBuild: Integer;
+   function GetMajor: Integer;
+   function GetMinor: Integer;
+   function GetRelease: Integer;
+   function GetVersionStr: string;
+   procedure SetBuild(const Value: Integer);
+   procedure SetMajor(const Value: Integer);
+   procedure SetMinor(const Value: Integer);
+   procedure SetRelease(const Value: Integer);
+   procedure SetVersionStr(const Value: string);
+
+   property Build: Integer read GetBuild write SetBuild;
+   property Major: Integer read GetMajor write SetMajor;
+   property Minor: Integer read GetMinor write SetMinor;
+   property Release: Integer read GetRelease write SetRelease;
+   property VersionStr: string read GetVersionStr write SetVersionStr;
+ end;
+
+
+ ID2BridgeAPPConfigINIConfig = interface
+  ['{A119AF2A-7ADC-4159-A1A2-28A7DD1A2971}']
+
+   function ServerPort(ADefaultPort: Integer): Integer;
+   function ServerName(ADefaultServerName: String): String;
+   function ServerDescription(ADefaultServerDescription: String): String;
+
+   function FileINIConfig: TIniFile;
+ end;
 
 
  ID2BridgeAPIMailConfig = interface
@@ -2080,6 +2360,32 @@ end;
   function UploadFile:boolean;
  end;
 {$ENDIF}
+
+
+ ID2BridgeAPID2Docker = interface
+  ['{9934BB95-4AD7-4CD6-9254-6A46C8BF04BD}']
+   function GetAppId: integer;
+   function GetInstanceNumber: integer;
+   function GetContainerId: integer;
+   procedure SetAppId(const Value: integer);
+   procedure SetInstanceNumber(const Value: integer);
+   procedure SetContainerId(const Value: integer);
+   function GetPrimaryContainerAPP: Boolean;
+   procedure SetPrimaryContainerAPP(const Value: Boolean);
+
+   function RTTIObject(const Name: string): TObject;
+
+   procedure DoServerStarted;
+   procedure DoLogException(AMessage: string);
+
+   procedure DoNewSession(ASession: IPrismSession);
+   procedure DoCloseSession(ASession: IPrismSession);
+
+   property AppId: integer read GetAppId write SetAppId;
+   property InstanceNumber: integer read GetInstanceNumber write SetInstanceNumber;
+   property ContainerId: integer read GetContainerId write SetContainerId;
+   property PrimaryContainerAPP: Boolean read GetPrimaryContainerAPP write SetPrimaryContainerAPP;
+ end;
 
 
  ID2BridgeAPIStorage = interface

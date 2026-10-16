@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -55,7 +61,8 @@ uses
 {$IFDEF FMX}
   D2Bridge.FMX.FakeForm,
 {$ENDIF}
-  D2Bridge.Interfaces, Prism.Interfaces, Prism.DataWare.Mapped, Prism.BaseClass.Sessions,
+  D2Bridge.Interfaces, D2Bridge.Rest.Interfaces, D2Bridge.Rest.Session,
+  Prism.Interfaces, Prism.DataWare.Mapped, Prism.BaseClass.Sessions,
   Prism.BaseClass.Timer, Prism.Options, Prism.Options.Security.Event;
 
 
@@ -66,22 +73,6 @@ type
 type
  TPrismBaseClass = class(TInterfacedPersistent, IPrismBaseClass)
   strict private
-   {$REGION 'TPrismINIConfig'}
-    type TPrismINIConfig = class(TInterfacedPersistent, IPrismINIConfig)
-        private
-         FFileINIConfig: TIniFile;
-        public
-         constructor Create;
-         destructor Destroy; override;
-
-         function ServerPort(ADefaultPort: Integer = 8888): Integer;
-         function ServerName(ADefaultServerName: String = 'D2Bridge Server'): String;
-         function ServerDescription(ADefaultServerDescription: String = 'D2Bridge Primary Server'): String;
-
-         function FileINIConfig: TIniFile;
-    end;
-   {$ENDREGION}
-
    procedure Exec_DoCloseSessionSessionChange(varPrismSession: TValue);
    procedure Exec_DoCloseSessionOnCloseSession(varPrismSession: TValue);
    procedure Exec_DoIdleSession(varPrismSession: TValue);
@@ -103,7 +94,11 @@ type
    FOnIdleSession: TOnIdleSession;
    FOnReconnectSession :TOnSessionEvent;
    FOnSecurity: TOnSecurityEvent;
-   FINIConfig: TPrismINIConfig;
+   FOnRoute: TOnRouteEvent;
+   FOnBeforeServerStart: TOnServerEvent;
+   FOnAfterServerStart: TOnServerEvent;
+   FOnBeforeServerStop: TOnServerEvent;
+   FOnAfterServerStop: TOnServerEvent;
    FPrismOptions: IPrismOptions;
    FServerController: ID2BridgeServerControllerBase;
    FPrismLog: TPrismLog;
@@ -115,9 +110,9 @@ type
    function GetOptions: IPrismOptions;
    procedure OnTimerObserver;
 {$IFDEF D2BRIDGE}
-   procedure SupportFileFromRC(AResourceName: string; AFileName: string; APath: string); overload;
+   procedure SupportFileFromRC(AResourceName: string; AFileName: string; APath: string; ASaveFilesonDisk: boolean); overload;
    procedure SupportFileFromRC(AResourceName: string; var AFileContent: string); overload;
-   procedure SavePrismSupportFiles;
+   procedure SavePrismSupportFiles(ASaveFilesonDisk: boolean);
 {$ENDIF}
    function GetPrismServerTCP: TPrismServerTCP;
   Public
@@ -134,18 +129,27 @@ type
    procedure DoDisconnectSession(const Session: IPrismSession); virtual;
    procedure DoException(Sender: TObject; E: Exception; APrismSession: IPrismSession; EventName: string); virtual;
    procedure DoSecurity(const SecEventInfo: TSecuritEventInfo); virtual;
+   procedure DoRoute(const RestSession: TD2BridgeRestSession; const Request: TPrismHTTPRequest; const Response: TPrismHTTPResponse); virtual;
    procedure Log(const SessionIdenty, ErrorForm, ErrorObject, ErrorEvent, ErrorMsg: string);
    procedure LogSecurity(const SecEventInfo: TSecuritEventInfo);
    procedure LogAccess(const APrismSessionInfo: IPrismSessionInfo);
-
+  published
    function Started: boolean;
    procedure StartServer;
    procedure StopServer;
    function SSLOptions: TIdSSLOptions;
-   function INIConfig: IPrismINIConfig;
    function ServerUUID: string;
 
    function Sessions: IPrismSessions;
+
+   function Rest: ID2BridgeRest;
+
+   function IsD2DockerContext: boolean;
+   function IsD2BridgeContext: boolean;
+
+   function API: ID2BridgeAPI;
+
+   function INIConfig: ID2BridgeAPPConfigINIConfig;
 
    property PrismServer: TPrismServerTCP read GetPrismServerTCP;
    property ServerController: ID2BridgeServerControllerBase read FServerController write FServerController;
@@ -162,7 +166,12 @@ type
    property OnReconnectSession: TOnSessionEvent read FOnReconnectSession write FOnReconnectSession;
    property OnExpiredSession: TOnExpiredSession read FOnExpiredSession write FOnExpiredSession;
    property OnIdleSession: TOnIdleSession read FOnIdleSession write FOnIdleSession;
+   property OnBeforeServerStart: TOnServerEvent read FOnBeforeServerStart write FOnBeforeServerStart;
+   property OnAfterServerStart: TOnServerEvent read FOnAfterServerStart write FOnAfterServerStart;
+   property OnBeforeServerStop: TOnServerEvent read FOnBeforeServerStop write FOnBeforeServerStop;
+   property OnAfterServerStop: TOnServerEvent read FOnAfterServerStop write FOnAfterServerStop;
    property OnSecurity: TOnSecurityEvent read FOnSecurity write FOnSecurity;
+   property OnRoute: TOnRouteEvent read FOnRoute write FOnRoute;
    property Options: IPrismOptions read GetOptions;
  end;
 
@@ -170,14 +179,14 @@ type
 function PrismBaseClass: TPrismBaseClass;
 
 const
- SizeServerUUID = 10;
+ SizeServerUUID = 22;
 
 
 implementation
 
 uses
   D2Bridge.Manager, D2Bridge.Forms, D2Bridge.Instance, Prism.Session, Prism.Session.Helper, Prism.Forms, Prism.Util,
-  D2Bridge.Util,
+  D2Bridge.Util, D2Bridge.Rest,
   Prism.Session.Thread.Proc;
 
 var PrismBaseClassInstance: TPrismBaseClass;
@@ -195,6 +204,11 @@ end;
 
 { TPrismBaseClass }
 
+function TPrismBaseClass.API: ID2BridgeAPI;
+begin
+ result:= D2BridgeManager.API;
+end;
+
 constructor TPrismBaseClass.Create(AOwner: TComponent);
 begin
  //FOwner:= AOwner;
@@ -204,8 +218,11 @@ begin
 
 {$IFDEF D2BRIDGE}
  FSessions:= TPrismSessions.Create;
+
+ if not Assigned(D2Bridge.Rest.D2BridgeRest) then
+  TD2BridgeRest.Create;
+
  FPrismOptions:= TPrismOptions.Create;
- FINIConfig:= TPrismINIConfig.Create;
 
  FPrismTimer:= TPrismTimer.Create(Options.HeartBeatTime, OnTimerObserver); 
 
@@ -226,8 +243,10 @@ begin
 // FPrismServerTCP.OnDownloadData:= FPrismServerHTML.DownloadData;
 
 {$IFDEF FMX}
+{$IFnDEF D2Docker}
  FMXFakeForm:= TFMXFakeForm.Create(Application);
  FMXFakeForm.Hide;
+{$ENDIF}
 {$ENDIF}
 {$ENDIF}
 
@@ -250,13 +269,17 @@ begin
  FSessions:= nil;
  vSessions.Free;
 
- FreeAndNil(FINIConfig);
 
  FPrismTimer.Terminate;
  Sleep(100);
 
+ //**The PrismServerTCP is Terminated**
  FPrismThreadServerTCP.Terminate;
+ Sleep(100);
+ FPrismThreadServerTCP.free;
  Sleep(200);
+
+ D2BridgeRest.Free;
 
  //FPrismThreadServerTCP.Free;
 // if FPrismServerTCP.Active then
@@ -407,7 +430,7 @@ begin
 
 {$IFDEF D2BRIDGE}
  {$IFDEF MSWINDOWS}
- if IsDebuggerPresent then
+ if IsDebuggerPresent and (not IsD2DockerContext) then
   raise Exception.Create(E.Message);
  {$ENDIF}
 {$ENDIF}
@@ -485,6 +508,14 @@ begin
   );
  end;
 end;
+
+
+procedure TPrismBaseClass.DoRoute(const RestSession: TD2BridgeRestSession; const Request: TPrismHTTPRequest; const Response: TPrismHTTPResponse);
+begin
+ if Assigned(FOnRoute) then
+  FOnRoute(RestSession, Request, Response);
+end;
+
 
 procedure TPrismBaseClass.DoSecurity(const SecEventInfo: TSecuritEventInfo);
 var
@@ -692,9 +723,6 @@ begin
   vPrismSession:= (varPrismSession.AsObject as TPrismSession);
 
   PrismBaseClass.FOnNewSession(vPrismRequest, vPrismResponse, vPrismSession);
-
-  if Options.LogAccess then
-   LogAccess(vPrismSession.InfoConnection)
  except
  end;
 end;
@@ -729,6 +757,7 @@ procedure TPrismBaseClass.Exec_ProcDoException(varExceptionInfo: TValue);
 var
  vListParam: TList<TValue>;
  vExcept: Exception;
+ vExceptionStr: string;
 begin
  try
   vListParam:= TList<TValue>(varExceptionInfo.AsObject);
@@ -738,14 +767,49 @@ begin
   if not Assigned(vExcept) then
    vExcept:= Exception.Create('Error');
 
-  PrismBaseClass.FOnPrismException(
-    vListParam[0].AsObject,
-    vListParam[1].AsObject,
-    vExcept,
-    vListParam[3].AsString,
-    vListParam[4].AsString,
-    vListParam[5].AsString,
-    (vListParam[6].AsObject as TPrismSession));
+  if (not vListParam[6].IsEmpty) and
+     (vListParam[6].IsObject) and
+     (vListParam[6].AsObject is TPrismSession) then
+   PrismBaseClass.FOnPrismException(
+     vListParam[0].AsObject,
+     vListParam[1].AsObject,
+     vExcept,
+     vListParam[3].AsString,
+     vListParam[4].AsString,
+     vListParam[5].AsString,
+     (vListParam[6].AsObject as TPrismSession));
+
+
+  if ServerController.IsD2DockerContext then
+  begin
+   vExceptionStr:= vExcept.Message;
+
+   if vListParam[3].AsString <> '' then
+   begin
+    if vExceptionStr <> '' then
+     vExceptionStr:= vExceptionStr + ' | ';
+    vExceptionStr:= vExceptionStr + 'Form: ' + vListParam[3].AsString;
+   end;
+
+   if vListParam[4].AsString <> '' then
+   begin
+    if vExceptionStr <> '' then
+     vExceptionStr:= vExceptionStr + ' | ';
+    vExceptionStr:= vExceptionStr + 'Component: ' + vListParam[4].AsString;
+   end;
+
+   if vListParam[5].AsString <> '' then
+   begin
+    if vExceptionStr <> '' then
+     vExceptionStr:= vExceptionStr + ' | ';
+    vExceptionStr:= vExceptionStr + 'Event: ' + vListParam[5].AsString;
+   end;
+
+{$IFDEF D2DOCKER}
+   D2BridgeManager.API.D2Docker.DoLogException(vExceptionStr);
+{$ENDIF}
+  end;
+
 
   vExcept.Free;
   vListParam.Free;
@@ -781,7 +845,7 @@ end;
 
 function TPrismBaseClass.GetPrismServerTCP: TPrismServerTCP;
 begin
- FPrismThreadServerTCP.PrismServerTCP;
+ result:= FPrismThreadServerTCP.PrismServerTCP;
 end;
 
 function TPrismBaseClass.GetServerPort: Integer;
@@ -789,9 +853,9 @@ begin
  Result:= FPrismThreadServerTCP.Port;
 end;
 
-function TPrismBaseClass.INIConfig: IPrismINIConfig;
+function TPrismBaseClass.INIConfig: ID2BridgeAPPConfigINIConfig;
 begin
- Result:= FINIConfig;
+ result:= AppConfig.INIConfig;
 end;
 
 procedure TPrismBaseClass.InstancePrimaryForm(APrismSession: IPrismSession);
@@ -817,6 +881,20 @@ begin
 {$ELSE}
 
 {$ENDIF}
+end;
+
+function TPrismBaseClass.IsD2BridgeContext: boolean;
+begin
+ {$IFDEF D2BRIDGE}
+ Result := True;
+ {$ELSE}
+ Result := False;
+ {$ENDIF}
+end;
+
+function TPrismBaseClass.IsD2DockerContext: boolean;
+begin
+ result:= ServerController.IsD2DockerContext;
 end;
 
 procedure TPrismBaseClass.Log(const SessionIdenty, ErrorForm, ErrorObject, ErrorEvent, ErrorMsg: string);
@@ -932,14 +1010,27 @@ begin
  end;
 end;
 
-{$IFDEF D2BRIDGE}
-procedure TPrismBaseClass.SavePrismSupportFiles;
+
+function TPrismBaseClass.Rest: ID2BridgeRest;
 begin
- SupportFileFromRC('PRISM_Support_Assets_JS_PrismServer', 'prismserver.js', '');
+ if Not Assigned(D2Bridge.Rest.D2BridgeRest) then
+  TD2BridgeRest.Create;
+
+ result:= D2BridgeRest;
+end;
+
+{$IFDEF D2BRIDGE}
+procedure TPrismBaseClass.SavePrismSupportFiles(ASaveFilesonDisk: boolean);
+begin
+ SupportFileFromRC('PRISM_Support_Assets_JS_PrismServer', 'prismserver.js', '', ASaveFilesonDisk);
 
  SupportFileFromRC('PRISM_Support_Assets_JS_D2BridgeLoader', FPrismServerHTML.FFileD2BridgeLoader);
 
- SupportFileFromRC('PRISM_Support_Assets_CSS_D2Bridge', 'd2bridge.css', '');
+{$IFDEF D2DOCKER}
+ SupportFileFromRC('PRISM_Support_Assets_JS_D2docker', FPrismServerHTML.FFileD2dockerJS);
+{$ENDIF}
+
+ SupportFileFromRC('PRISM_Support_Assets_CSS_D2Bridge', 'd2bridge.css', '', ASaveFilesonDisk);
 
  SupportFileFromRC('PRISM_Support_HTML_Error500', FPrismServerHTML.FFileError500);
 
@@ -948,45 +1039,45 @@ begin
  SupportFileFromRC('PRISM_Support_HTML_Error403blacklist', FPrismServerHTML.FFileErrorBlackList);
 
  if PrismBaseClass.Options.IncludeInputMask then
-  SupportFileFromRC('PRISM_Support_Assets_JS_JQInputMask', 'jquery.inputmask.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_JQInputMask', 'jquery.inputmask.js', '', ASaveFilesonDisk);
 
  if PrismBaseClass.Options.IncludeJQuery then
-  SupportFileFromRC('PRISM_Support_Assets_JS_JQuery_3_6_4', 'jquery-3.6.4.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_JQuery_3_6_4', 'jquery-3.6.4.js', '', ASaveFilesonDisk);
 
  if PrismBaseClass.Options.IncludeSweetAlert2 then
  begin
-  SupportFileFromRC('PRISM_Support_Assets_CSS_SweetAlert2', 'sweetalert2.css', '');
-  SupportFileFromRC('PRISM_Support_Assets_JS_SweetAlert2', 'sweetalert2.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_CSS_SweetAlert2', 'sweetalert2.css', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_JS_SweetAlert2', 'sweetalert2.js', '', ASaveFilesonDisk);
  end;
 
  if PrismBaseClass.Options.IncludeJQGrid then
  begin
-  SupportFileFromRC('PRISM_Support_Assets_JS_JQGrid', 'jquery.jqgrid.min.js', '');
-  SupportFileFromRC('PRISM_Support_Assets_CSS_JQGrid', 'ui.jqgrid-bootstrap5.css', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_JQGrid', 'jquery.jqgrid.min.js', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_CSS_JQGrid', 'ui.jqgrid-bootstrap5.css', '', ASaveFilesonDisk);
  end;
 
 {$REGION 'Editor'}
-  SupportFileFromRC('PRISM_Support_Assets_JS_Highlight', 'highlight.min.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_Highlight', 'highlight.min.js', '', ASaveFilesonDisk);
 {$ENDREGION}
 
 {$REGION 'MarkDown Editor'}
-  SupportFileFromRC('PRISM_Support_Assets_JS_MarkDownEditor', 'easymde.min.js', '');
-  SupportFileFromRC('PRISM_Support_Assets_CSS_MarkDownEditor', 'easymde.min.css', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_MarkDownEditor', 'easymde.min.js', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_CSS_MarkDownEditor', 'easymde.min.css', '', ASaveFilesonDisk);
 {$ENDREGION}
 
 {$REGION 'WYSIWYG Editor'}
-  SupportFileFromRC('PRISM_Support_Assets_JS_WYSIWYGEditor', 'summernote-bs5.js', '');
-  SupportFileFromRC('PRISM_Support_Assets_JS_WYSIWYGEditorPlugin', 'summernote-ext-highlight.js', '');
-  SupportFileFromRC('PRISM_Support_Assets_CSS_WYSIWYGEditor', 'summernote-bs5.css', '');
-  SupportFileFromRC('PRISM_Support_Assets_FONT_WYSIWYGEditor1', 'summernote.woff2', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_WYSIWYGEditor', 'summernote-bs5.js', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_JS_WYSIWYGEditorPlugin', 'summernote-ext-highlight.js', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_CSS_WYSIWYGEditor', 'summernote-bs5.css', '', ASaveFilesonDisk);
+  SupportFileFromRC('PRISM_Support_Assets_FONT_WYSIWYGEditor1', 'summernote.woff2', '', ASaveFilesonDisk);
 {$ENDREGION}
 
 {$REGION 'Camera'}
-  SupportFileFromRC('PRISM_Support_Assets_JS_D2BRIDGECAMERA', 'd2bridgecamera.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_D2BRIDGECAMERA', 'd2bridgecamera.js', '', ASaveFilesonDisk);
 {$ENDREGION}
 
 {$REGION 'QRCode Reader'}
-  SupportFileFromRC('PRISM_Support_Assets_JS_D2BRIDGEQRCodeReader', 'zxing.browser.min.js', '');
+  SupportFileFromRC('PRISM_Support_Assets_JS_D2BRIDGEQRCodeReader', 'zxing.browser.min.js', '', ASaveFilesonDisk);
 {$ENDREGION}
 
 {$REGION 'CORE'}
@@ -1039,18 +1130,22 @@ begin
   FServerUUID:= GenerateRandomString(SizeServerUUID);
 
   {$REGION 'INI Config'}
-  if Options.UseINIConfig then
-  begin
-   INIConfig.FileINIConfig.WriteInteger('D2Bridge Server Config', 'Server Port', ServerPort);
-   INIConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Name', ServerController.ServerName);
-   INIConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Description', ServerController.ServerName);
-  end;
+  if not ServerController.IsD2DockerContext then
+   if Options.UseINIConfig then
+   begin
+    ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Server Config', 'Server Port', ServerPort);
+    ServerController.APPConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Name', ServerController.ServerName);
+    ServerController.APPConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Description', ServerController.ServerName);
+
+    if SameText(ServerController.APPConfig.FileINIConfig.ReadString('D2Bridge Log', 'LogFileMode', 'session'), 'daily') then
+     FPrismOptions.LogFileMode:= lfmDaily;
+   end;
   {$ENDREGION}
 
   FPrismThreadServerTCP.Port:= ServerPort;
 
   if (FPrismOptions.LogException) or (FPrismOptions.LogSecurity) then
-   FPrismLog:= TPrismLog.Create(FPrismOptions.LogFile);
+   FPrismLog:= TPrismLog.Create(FPrismOptions.LogFile, FPrismOptions.LogFileMode = lfmDaily);
 
   if not DirectoryExists(Options.RootDirectory) then
   MkDir(Options.RootDirectory);
@@ -1064,27 +1159,46 @@ begin
   if not DirectoryExists(Options.RootDirectory + PrismBaseClass.Options.PathFont) then
   MkDir(Options.RootDirectory + PrismBaseClass.Options.PathFont);
 
-  if not DirectoryExists(Options.RootDirectory + 'temp') then
-  MkDir(Options.RootDirectory + 'temp');
+  if not DirectoryExists(Options.RootDirectory + Options.PathTemp) then
+   ForceDirectories(Options.RootDirectory + Options.PathTemp);
 
-  if DirectoryExists(Options.RootDirectory + 'temp' + PathDelim + 'Sessions') then
+  if DirectoryExists(Options.RootDirectory + Options.PathTempSessions) then
   begin
    {$IFDEF HAS_UNIT_SYSTEM_IOUTILS}
-      TDirectory.Delete(Options.RootDirectory + 'temp' + PathDelim + 'Sessions', true);
+      TDirectory.Delete(Options.RootDirectory + Options.PathTempSessions, true);
    {$ELSE}
-      DeleteDirectory(Options.RootDirectory + 'temp' + PathDelim + 'Sessions',True);
-      RemoveDirUTF8(Options.RootDirectory + 'temp' + PathDelim + 'Sessions');
+      DeleteDirectory(Options.RootDirectory + Options.PathTempSessions,True);
+      RemoveDirUTF8(Options.RootDirectory + Options.PathTempSessions);
    {$ENDIF}
   end;
-  if not DirectoryExists(Options.RootDirectory + 'temp' + PathDelim + 'Sessions') then
-  MkDir(Options.RootDirectory + 'temp' + PathDelim + 'Sessions');
+  if not DirectoryExists(Options.RootDirectory + Options.PathTempSessions) then
+  MkDir(Options.RootDirectory + Options.PathTempSessions);
 
   //Expand Files Support
-{$IFDEF D2BRIDGE}
-  SavePrismSupportFiles;
-{$ENDIF}
+ {$IFDEF D2BRIDGE}
+  {$IFDEF D2DOCKER}
+   if D2BridgeManager.API.D2Docker.PrimaryContainerAPP then
+    SavePrismSupportFiles(true)
+   else
+    SavePrismSupportFiles(false);
+  {$ELSE}
+   SavePrismSupportFiles(true);
+  {$ENDIF}
+ {$ENDIF}
+
+  try
+   if Assigned(FOnBeforeServerStart) then
+    FOnBeforeServerStart;
+  except
+  end;
 
   FPrismThreadServerTCP.StartServer;
+
+  try
+   if Assigned(FOnAfterServerStart) then
+    FOnAfterServerStart;
+  except
+  end;
 
   //FPrismTimer.Resume;
  end;
@@ -1093,9 +1207,22 @@ end;
 procedure TPrismBaseClass.StopServer;
 begin
  try
+  if Assigned(FOnBeforeServerStop) then
+   FOnBeforeServerStop;
+ except
+ end;
+
+ try
   FPrismThreadServerTCP.StopServer;
  except
  end;
+
+ try
+  if Assigned(FOnAfterServerStop) then
+   FOnAfterServerStop;
+ except
+ end;
+
 
  if Assigned(FPrismLog) then
   FreeAndNil(FPrismLog);
@@ -1140,7 +1267,7 @@ begin
   end;
 end;
 
-procedure TPrismBaseClass.SupportFileFromRC(AResourceName, AFileName, APath: string);
+procedure TPrismBaseClass.SupportFileFromRC(AResourceName, AFileName, APath: string; ASaveFilesonDisk: boolean);
 var
  ResInfo:     {$IFNDEF FPC}HRSRC{$ELSE}TLResource{$ENDIF};
  ResStream:   {$IFNDEF FPC}TResourceStream{$ELSE}TLazarusResourceStream{$ENDIF};
@@ -1189,43 +1316,5 @@ begin
 end;
 {$ENDIF}
 
-{ TPrismBaseClass.TPrismOptions }
-
-{ TPrismBaseClass.TPrismINIConfig }
-
-constructor TPrismBaseClass.TPrismINIConfig.Create;
-begin
- FFileINIConfig:= TIniFile.Create(ExtractFilePath(GetModuleName(HInstance))+'Config.ini');
-end;
-
-destructor TPrismBaseClass.TPrismINIConfig.Destroy;
-begin
- FFileINIConfig.Free;
-
- inherited;
-end;
-
-function TPrismBaseClass.TPrismINIConfig.FileINIConfig: TIniFile;
-begin
- Result:= FFileINIConfig;
-end;
-
-function TPrismBaseClass.TPrismINIConfig.ServerDescription(
-  ADefaultServerDescription: String): String;
-begin
- Result:= FFileINIConfig.ReadString('D2Bridge Server Config', 'Server Name', ADefaultServerDescription);
-end;
-
-function TPrismBaseClass.TPrismINIConfig.ServerName(
-  ADefaultServerName: String): String;
-begin
- Result:= FFileINIConfig.ReadString('D2Bridge Server Config', 'Server Name', ADefaultServerName);
-end;
-
-function TPrismBaseClass.TPrismINIConfig.ServerPort(
-  ADefaultPort: Integer): Integer;
-begin
- Result:= FFileINIConfig.ReadInteger('D2Bridge Server Config', 'Server Port', ADefaultPort);
-end;
 
 end.

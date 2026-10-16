@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -358,6 +364,7 @@ var
  ParamStrings: TStrings;
  vComponentID, PrismComponentsStatusStr: String;
  PrismComponentsJSONArray: TJSONArray;
+ vHasEvent: boolean;
  I, J, Z, X: Integer;
  //vFocusedPrismControl: IPrismControl;
  ResulThread: string;
@@ -365,6 +372,7 @@ var
 begin
  Result:= '';
  vComponentDisableIgnore:= false;
+ vHasEvent:= false;
  FEvent:= nil;
  PrismForm:= nil;
  ParamStrings:= nil;
@@ -533,11 +541,20 @@ begin
            FEvent:= (PrismForm.Controls[I].Events.Item(Z) as TPrismControlEvent)
          end else
           vComponentDisableIgnore:= true;
+
+         vHasEvent:= true;
          Break;
         end;
+
         if FEvent <> nil then
-        Break;
+         Break;
+
+        if vHasEvent then
+         break;
        end;
+
+       if vHasEvent then
+        break;
       end;
 
       if vComponentDisableIgnore  then

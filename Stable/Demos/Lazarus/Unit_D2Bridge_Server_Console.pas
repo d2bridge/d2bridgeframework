@@ -189,7 +189,12 @@ var
  FInfo: TStrings;
  vSecForWaitEnter: Integer;
 begin
+ 
+ if D2BridgeServerController.IsD2DockerContext then
+  Exit;
+
  WaitingForReturn:= false;
+
  TimerThreadTerminated:= false;
 
  if not IsDebuggerPresent then
@@ -231,11 +236,13 @@ end;
 class procedure TD2BridgeServerConsole.Run;
 begin
  D2BridgeServerController:= TLazarusWebAppGlobal.Create(Application);
- vServerPort:= D2BridgeServerController.Prism.INIConfig.ServerPort(8888);
- vServerName:= D2BridgeServerController.Prism.INIConfig.ServerName('D2Bridge Server');
+ vServerPort:= D2BridgeServerController.AppConfig.ServerPort(8888);
+ vServerName:= D2BridgeServerController.AppConfig.ServerName('D2Bridge Server');
 
  D2BridgeServerController.APPName:= 'Lazarus Demo';
  //D2BridgeServerController.APPDescription:= 'My D2Bridge Web APP';
+
+ //D2BridgeServerController.APPSignature:= '.....';
 
  //Security
  {
@@ -297,7 +304,12 @@ begin
  D2BridgeServerController.Port:= vServerPort;
  D2BridgeServerController.ServerName:= VServerName;
 
+ 
+ if D2BridgeServerController.IsD2DockerContext then
+  Exit;
+
  D2BridgeServerController.StartServer;
+
 
   try
     while D2BridgeServerController.Started do

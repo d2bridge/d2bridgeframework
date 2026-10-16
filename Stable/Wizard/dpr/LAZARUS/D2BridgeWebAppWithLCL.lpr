@@ -1,4 +1,4 @@
-program D2BridgeWebAppWithLCL;
+{$IFDEF D2DOCKER}library{$ELSE}program{$ENDIF} D2BridgeWebAppWithLCL;
 
 {$mode delphi}{$H+}
 

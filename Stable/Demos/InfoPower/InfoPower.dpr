@@ -16,8 +16,7 @@ uses
   D2BridgeFormTemplate in 'D2BridgeFormTemplate.pas',
   Unit_D2Bridge_Server_Console in 'Unit_D2Bridge_Server_Console.pas',
   Unit1 in 'Unit1.pas' {Form1},
-  Unit3 in 'Unit3.pas' {Form3},
-  D2Bridge.VCLObj.TwwRadioGroup in '..\..\D2Bridge Framework\Others VCL\D2Bridge.VCLObj.TwwRadioGroup.pas';
+  Unit3 in 'Unit3.pas' {Form3};
 
 {$R *.res}
 

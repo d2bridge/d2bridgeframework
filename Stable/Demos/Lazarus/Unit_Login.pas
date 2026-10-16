@@ -31,6 +31,7 @@ type
     procedure Button_LoginMicrosoftClick(Sender: TObject);
     procedure Button_ShowPassClick(Sender: TObject);
     procedure FormActivate(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
 
   public
@@ -47,7 +48,8 @@ Function Form_Login: TForm_Login;
 implementation
 
 uses
-  LazarusWebApp, Lazarus_Session, unitAuth, UnitControls, Prism.Session, Prism.BaseClass;
+  LazarusWebApp, Lazarus_Session, unitAuth, UnitControls, Prism.Session, Prism.BaseClass,
+  UnitMenu;
 
 Function Form_Login: TForm_Login;
 begin
@@ -74,15 +76,30 @@ begin
   LazarusDemo.UserEmail:= '';
   LazarusDemo.UserURLPicture:= '';
 
-  PrismSession.Cookies.Add('UserLogin', PrismSession.UUID);
+  //PrismSession.Cookies.Add('UserLogin', PrismSession.UUID);
 
-  if FormControls = nil then
-   TFormControls.CreateInstance;
-  FormControls.Show;
+  if IsD2BridgeContext then
+  begin
+   if FormControls = nil then
+    TFormControls.CreateInstance;
+   FormControls.Show;
+  end else
+  begin
+   if FormMenu = nil then
+    TFormMenu.CreateInstance;
+   FormMenu.Show;
+  end;
  end else
  begin
-  D2Bridge.Validation(Edit_UserName, false);
-  D2Bridge.Validation(Edit_Password, false, 'Invalid username or password');
+  if IsD2BridgeContext then
+  begin
+   D2Bridge.Validation(Edit_UserName, false);
+   D2Bridge.Validation(Edit_Password, false, 'Invalid username or password');
+  end else
+  begin
+   MessageDlg('Invalid username or password', mterror, [mbcancel], 0);
+  end;
+
   Exit;
  end;
 
@@ -163,10 +180,22 @@ begin
  ShowMessage('Use for login: Admin and for Password: Admin', true, true);
 end;
 
+procedure TForm_Login.FormCreate(Sender: TObject);
+begin
+ if not IsD2BridgeContext then
+ begin
+  Image_Logo.Picture.LoadFromFile('web\wwwroot\images\d2bridge.png');
+  Image_BackGround.Picture.LoadFromFile('web\wwwroot\images\bridge.jpg');
+
+  Button_LoginGoogle.Visible:= false;
+  Button_LoginMicrosoft.Visible:= false;
+ end;
+end;
+
 procedure TForm_Login.PageLoaded;
-var
-  vPrismSession: TPrismSession;
-  vLazarusDemoSession: TLazarusDemoSession;
+//var
+//  vPrismSession: TPrismSession;
+//  vLazarusDemoSession: TLazarusDemoSession;
 begin
   inherited;
 
@@ -209,13 +238,15 @@ begin
  with D2Bridge.Items.add do
  begin
   //Image Backgroup Full Size *Use also ImageFromURL...
-  ImageFromTImage(Image_BackGround, CSSClass.Image.Image_BG20_FullSize);
+  //ImageFromTImage(Image_BackGround, CSSClass.Image.Image_BG20_FullSize);
+  ImageFromURL('images/bridge.jpg', CSSClass.Image.Image_BG20_FullSize);
 
   with Card do
   begin
    CSSClasses:= CSSClass.Card.Card_Center;
 
-   ImageICOFromTImage(Image_Logo, CSSClass.Col.ColSize4);
+   //ImageICOFromTImage(Image_Logo, CSSClass.Col.ColSize4);
+   ImageICOFromURL('images/d2bridge.png' , CSSClass.Col.ColSize4);
 
    with BodyItems.Add do
    begin

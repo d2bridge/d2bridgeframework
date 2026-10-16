@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -52,6 +58,9 @@ type
    FFileError500: string;
    FFileError429: string;
    FFileErrorBlackList: string;
+{$IFDEF D2DOCKER}
+   FFileD2dockerJS: string;
+{$ENDIF}
    constructor Create(AOwner: TComponent); override;
    destructor Destroy; override;
 
@@ -64,6 +73,7 @@ type
    procedure DownloadData(APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext);
    function ReceiveMessage(AMessage: TPrismWebSocketMessage; PrismWSContext: TPrismWebSocketContext): string;
    procedure FinishedGetHTML(APrismWSContext: TPrismWebSocketContext);
+   procedure ParseFile(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext);
   end;
 
 
@@ -118,15 +128,15 @@ var
  vFileName: String;
 begin
  if Assigned(APrismWSContext) and (APrismWSContext.Token <> '') and
-    (APrismRequest.Header.QueryParams.Values['file'] <> '') and
+    (APrismRequest.QueryParams.Values['file'] <> '') and
     (APrismWSContext.PrismSessionUUID <> '') and PrismBaseClass.Sessions.Exist(APrismWSContext.PrismSessionUUID) then
  begin
   vPrismSession:= PrismBaseClass.Sessions.Item[APrismWSContext.PrismSessionUUID] as TPrismSession;
 
   if (not (vPrismSession.FileDownloads.Count <= 0)) then
-   if vPrismSession.FileDownloads.ContainsKey(APrismRequest.Header.QueryParams.Values['file']) then
+   if vPrismSession.FileDownloads.ContainsKey(APrismRequest.QueryParams.Values['file']) then
    begin
-    vFileName:= vPrismSession.FileDownloads[APrismRequest.Header.QueryParams.Values['file']];
+    vFileName:= vPrismSession.FileDownloads[APrismRequest.QueryParams.Values['file']];
     if FileExists(vFileName) then
     APrismReponse.FileName:= vFileName;
    end;
@@ -428,7 +438,7 @@ var
 begin
  if SameText(ExtractFileName(AGetFileName), 'd2bridgeloader.js') then
  begin
-  vLoadingWaitText:= (D2BridgeLangCore.LangByBrowser(APrismRequest.Header.AcceptLanguage) as TD2BridgeTerm).Loader.WaitText;
+  vLoadingWaitText:= (D2BridgeLangCore.LangByBrowser(APrismRequest.AcceptLanguage) as TD2BridgeTerm).Loader.WaitText;
 
   AMimeType:= 'application/javascript';
   AResponseFileContent:= FFileD2BridgeLoader;
@@ -444,7 +454,7 @@ begin
  if SameText(ExtractFileName(AGetFileName), 'error500.html') then
  begin
   AMimeType:= 'text/html';
-  AResponseFileContent:= GetError500(APrismRequest.Header.AcceptLanguage);
+  AResponseFileContent:= GetError500(APrismRequest.AcceptLanguage);
  end;
 
 // if SameText(ExtractFileName(AGetFileName), 'font-awesome.min.css') then
@@ -476,11 +486,22 @@ begin
   AResponseRedirect:= 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js';
  end;
 
-  if SameText(ExtractFileName(AGetFileName), 'bootstrap.min.css') then
+ if SameText(ExtractFileName(AGetFileName), 'bootstrap.min.css') then
  begin
   AResponseRedirect:= 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css';
  end;
 
+{$IFDEF D2DOCKER}
+ if SameText(ExtractFileName(AGetFileName), 'd2docker.js') then
+ begin
+  AResponseFileContent:=
+   StringReplace(
+    FFileD2dockerJS,
+    '{{D2DockerInstance}}',
+    PrismBaseClass.ServerController.D2DockerInstanceAlias,
+    []);
+ end;
+{$ENDIF}
 end;
 
 procedure TPrismServerHTML.GetHTML(APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext);
@@ -501,15 +522,15 @@ begin
   begin
    if PrismBaseClass.Options.Security.Enabled then
    begin
-    APrismRequest.Header.TooManyConnFromIP:= not PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(APrismRequest.Header.ClientIP, vBlockIPLimitConn, vBlockIPLimitSession);
+    APrismRequest.TooManyConnFromIP:= not PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(APrismRequest.ClientIP, vBlockIPLimitConn, vBlockIPLimitSession);
 
     if vBlockIPLimitConn then
-     EventBlockIPLimitConn(APrismRequest.Header.ClientIP, APrismRequest.Header.UserAgent);
+     EventBlockIPLimitConn(APrismRequest.ClientIP, APrismRequest.UserAgent);
     if vBlockIPLimitSession then
-     EventBlockIPLimitSession(APrismRequest.Header.ClientIP, APrismRequest.Header.UserAgent);
+     EventBlockIPLimitSession(APrismRequest.ClientIP, APrismRequest.UserAgent);
    end;
 
-   if not APrismRequest.Header.TooManyConnFromIP then
+   if not APrismRequest.TooManyConnFromIP then
    begin
 //    TThread.Synchronize(nil,
 //     procedure
@@ -519,26 +540,26 @@ begin
 //    );
 
     PrismBaseClass.Sessions.Add(vPrismSession);
-    vPrismSession.URI.Raw:= APrismRequest.Header.FullURL;
-    vPrismSession.URI.URL:= APrismRequest.Header.URL;
-    vPrismSession.URI.Host:= APrismRequest.Header.Host;
-    vPrismSession.URI.ServerPort:= APrismRequest.Header.ServerPort;
-    //vPrismSession.URI.Protocol:= APrismRequest.Header.
+    vPrismSession.URI.Raw:= APrismRequest.FullURL;
+    vPrismSession.URI.URL:= APrismRequest.URL;
+    vPrismSession.URI.Host:= APrismRequest.Host;
+    vPrismSession.URI.ServerPort:= APrismRequest.ServerPort;
+    //vPrismSession.URI.Protocol:= APrismRequest.
 
     //CooKies
-    (vPrismSession.Cookies as TPrismCookies).SetRawCookies(APrismRequest.Header.Cookies);
+    (vPrismSession.Cookies as TPrismCookies).SetRawCookies(APrismRequest.Cookies);
     (vPrismSession.Cookies as TPrismCookies).Refresh;
 
-    vPrismSession.URI.QueryParams.Update(APrismRequest.Header.QueryParams);
-  //  for I := 0 to Pred(APrismRequest.Header.QueryParams.Count) do
+    vPrismSession.URI.QueryParams.Update(APrismRequest.QueryParams);
+  //  for I := 0 to Pred(APrismRequest.QueryParams.Count) do
   //  with vPrismSession.URI.QueryParams.Add do
   //  begin
-  //   Key:= APrismRequest.Header.QueryParams.Names[I];
-  //   Value:= APrismRequest.Header.QueryParams.ValueFromIndex[I];
+  //   Key:= APrismRequest.QueryParams.Names[I];
+  //   Value:= APrismRequest.QueryParams.ValueFromIndex[I];
   //  end;
 
-    vPrismSession.InfoConnection.IP:= APrismRequest.Header.ClientIP;
-    vPrismSession.InfoConnection.UserAgent:= APrismRequest.Header.UserAgent;
+    vPrismSession.InfoConnection.IP:= APrismRequest.ClientIP;
+    vPrismSession.InfoConnection.UserAgent:= APrismRequest.UserAgent;
 
     if Assigned(APrismWSContext) then
     begin
@@ -548,19 +569,19 @@ begin
     end;
 
  {$IFNDEF FPC}
-    vPrismSession.FormatSettings:= TFormatSettings.Create(FirstLangByBrowser(APrismRequest.Header.AcceptLanguage));
+    vPrismSession.FormatSettings:= TFormatSettings.Create(FirstLangByBrowser(APrismRequest.AcceptLanguage));
  {$ELSE}
     vFormatSettings:= DefaultFormatSettings;
 
   {$IFDEF MSWINDOWS}
-    GetLocaleFormatSettings(GetLocaleLang(FirstLangByBrowser(APrismRequest.Header.AcceptLanguage)), vFormatSettings);
+    GetLocaleFormatSettings(GetLocaleLang(FirstLangByBrowser(APrismRequest.AcceptLanguage)), vFormatSettings);
   {$ENDIF}
 
     vPrismSession.FormatSettings:= vFormatSettings;
  {$ENDIF}
 
 
-    vPrismSession.LanguageNav:= D2BridgeLangCore.LangByBrowser(APrismRequest.Header.AcceptLanguage).Language.D2BridgeLang;
+    vPrismSession.LanguageNav:= D2BridgeLangCore.LangByBrowser(APrismRequest.AcceptLanguage).Language.D2BridgeLang;
 
     //PrismBaseClass.InstancePrimaryForm(vPrismSession);
 
@@ -590,7 +611,7 @@ begin
      (vPrismSession.PrimaryForm <> nil) then
   begin
    //Set Raw CooKies (not Update)
-   (vPrismSession.Cookies as TPrismCookies).SetRawCookies(APrismRequest.Header.Cookies);
+   (vPrismSession.Cookies as TPrismCookies).SetRawCookies(APrismRequest.Cookies);
  
  // vPrismSession.ExecThread(true,
  //   procedure
@@ -606,6 +627,82 @@ begin
  except
   abort;
  end;
+end;
+
+procedure TPrismServerHTML.ParseFile(AFileName: string;
+  AContext: TIdContext; APrismRequest: TPrismHTTPRequest;
+  var APrismReponse: TPrismHTTPResponse;
+  var APrismWSContext: TPrismWebSocketContext);
+var
+ vPrismSession: TPrismSession;
+ PrismForm: TPrismForm;
+ sFile: TStringStream;
+ sFileContent: string;
+begin
+ if Assigned(APrismWSContext) and
+    (APrismWSContext.Token <> '') and
+    (APrismWSContext.FormUUID <> '') and
+    (APrismWSContext.PrismSessionUUID <> '') and
+    PrismBaseClass.Sessions.Exist(APrismWSContext.PrismSessionUUID) then
+ begin
+  vPrismSession:= PrismBaseClass.Sessions.Item[APrismWSContext.PrismSessionUUID] as TPrismSession;
+  PrismForm:= (vPrismSession.ActiveFormByFormUUID(APrismWSContext.FormUUID) as TPrismForm);
+
+  if not FileExists(AFileName) then
+  begin
+   APrismReponse.Error:= true;
+   exit;
+  end;
+
+
+  if vPrismSession.Token = APrismWSContext.Token then
+  begin
+   sFile:= TStringStream.Create('', TEncoding.UTF8);
+
+   try
+    try
+     sFile.LoadFromFile(AFileName);
+     sFileContent:= sFile.DataString;
+
+     try
+      //Parte II - Processa todo HTML (Experimental)
+      sFileContent:= StringReplace(sFileContent, '$prismparse', PrismBaseClass.PrismServerHTMLHeaders.ProcessPrismParseFile(vPrismSession), [rfIgnoreCase,rfReplaceAll]);
+     except
+     end;
+
+     try
+      //Parte II - Processa todo HTML (Experimental)
+      vPrismSession.ActiveForm.ProcessControlsToHTML(sFileContent);
+     except
+     end;
+
+     try
+     //Processa **PARTE II** os TAGs HTML {{Texto}}
+      vPrismSession.ActiveForm.ProcessTagHTML(sFileContent);
+     except
+     end;
+
+     try
+      //Processa as CallBack TAGs HTML {{Texto}}
+      vPrismSession.ActiveForm.ProcessCallBackTagHTML(sFileContent);
+     except
+     end;
+
+     try
+      //Translate
+      vPrismSession.ActiveForm.ProcessTagTranslate(sFileContent);
+     except
+     end;
+
+     APrismReponse.Content:= sFileContent;
+    except
+    end;
+   finally
+    sFile.Free;
+   end;
+  end;
+ end;
+
 end;
 
 function TPrismServerHTML.ReceiveMessage(AMessage: TPrismWebSocketMessage; PrismWSContext: TPrismWebSocketContext): string;
@@ -699,14 +796,14 @@ var
  I, Z: integer;
 begin
  if Assigned(APrismWSContext) and (APrismWSContext.Token <> '') and
-    (APrismWSContext.FormUUID <> '') and (APrismRequest.Header.QueryParams.Values['eventid'] <> '') and
+    (APrismWSContext.FormUUID <> '') and (APrismRequest.QueryParams.Values['eventid'] <> '') and
     (APrismWSContext.PrismSessionUUID <> '') and PrismBaseClass.Sessions.Exist(APrismWSContext.PrismSessionUUID) then
  begin
   vPrismSession:= PrismBaseClass.Sessions.Item[APrismWSContext.PrismSessionUUID] as TPrismSession;
   PrismForm:= (vPrismSession.ActiveFormByFormUUID(APrismWSContext.FormUUID) as TPrismForm);
-  EventID:= APrismRequest.Header.QueryParams.Values['eventid'];
+  EventID:= APrismRequest.QueryParams.Values['eventid'];
   ParametersString:= TStringList.Create;
-  ParametersString.Text:= APrismRequest.Header.QueryParams.Text;
+  ParametersString.Text:= APrismRequest.QueryParams.Text;
 
   if vPrismSession.Token = APrismWSContext.Token then
   begin
@@ -737,14 +834,14 @@ begin
      end else
      if (FEvent.EventType = EventOnCellPost) then
      begin
-      if (APrismRequest.Header.Content <> '') and (IsJSONValid(APrismRequest.Header.Content)) then
+      if (APrismRequest.Content <> '') and (IsJSONValid(APrismRequest.Content)) then
       begin
 {$IFNDEF FMX}
        if FEvent.PrismControl.IsDBGrid then
-        FEvent.PrismControl.AsDBGrid.CellPostbyJSON(APrismRequest.Header.Content, ARowID, AErrorMessage)
+        FEvent.PrismControl.AsDBGrid.CellPostbyJSON(APrismRequest.Content, ARowID, AErrorMessage)
        else
 {$ENDIF}
-        FEvent.PrismControl.AsStringGrid.CellPostbyJSON(APrismRequest.Header.Content, ARowID, AErrorMessage);
+        FEvent.PrismControl.AsStringGrid.CellPostbyJSON(APrismRequest.Content, ARowID, AErrorMessage);
 
        ResultErrorJSON:= TJSONObject.Create;
 

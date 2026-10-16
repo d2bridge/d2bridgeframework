@@ -41,6 +41,7 @@ type
  public
   { Public declarations }
  protected
+  procedure Upload(AFiles: TStrings; Sender: TObject); override;
   procedure ExportD2Bridge; override;
   procedure InitControlsD2Bridge(const PrismControl: TPrismControl); override;
   procedure RenderD2Bridge(const PrismControl: TPrismControl; var HTMLControl: string); override;
@@ -138,6 +139,20 @@ begin
 
   ComboBox1.ItemIndex:= Image1.Camera.CurrentDeviceIndex;
  end;
+end;
+
+procedure TFormCamera.Upload(AFiles: TStrings; Sender: TObject);
+begin
+ ShowMessage('New file received on '+ ExtractFileName(AFiles[0]), true, true);
+
+ //Example identify sender
+ {
+ if Sender is TPrismControl then
+  if (Sender as TPrismControl).VCLComponent = Image1 then
+  begin
+   ///
+  end;
+ }
 end;
 
 procedure TFormCamera.ExportD2Bridge;

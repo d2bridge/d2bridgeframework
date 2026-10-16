@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -45,10 +51,11 @@ type
      FD2BridgeItemHTMLTabs: TD2BridgeItemHTMLTabs;
      FD2BridgeItems : TD2BridgeItems;
      FTitle: String;
+     FIndex: integer;
      function GetTitle: string;
      procedure SetTitle(ATitle: string);
     public
-     constructor Create(D2BridgeItemHTMLTabs: TD2BridgeItemHTMLTabs); reintroduce;
+     constructor Create(D2BridgeItemHTMLTabs: TD2BridgeItemHTMLTabs; AIndex: Integer); reintroduce;
      destructor Destroy; override;
 
      Function Items: ID2BridgeAddItems;
@@ -167,7 +174,7 @@ end;
 
 function TD2BridgeItemHTMLTabs.AddTab: ID2BridgeItemHTMLTabItem;
 begin
- Result:= TD2BridgeItemHTMLTabItem.Create(self);
+ Result:= TD2BridgeItemHTMLTabItem.Create(self, FTabs.Count);
  FTabs.Add(Result);
 end;
 
@@ -343,11 +350,14 @@ end;
 
 { TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem }
 
-constructor TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem.Create(D2BridgeItemHTMLTabs: TD2BridgeItemHTMLTabs);
+constructor TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem.Create(D2BridgeItemHTMLTabs: TD2BridgeItemHTMLTabs; AIndex: Integer);
 begin
  FD2BridgeItemHTMLTabs:= D2BridgeItemHTMLTabs;
 
  FD2BridgeItems:= TD2BridgeItems.Create(D2BridgeItemHTMLTabs.BaseClass);
+
+ FIndex:= AIndex;
+ (FD2BridgeItemHTMLTabs.PrismControl as TPrismTabs).AddTab(FIndex, '');
 end;
 
 destructor TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem.Destroy;
@@ -367,10 +377,11 @@ begin
  Result:= FD2BridgeItems;
 end;
 
-procedure TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem.SetTitle(
-  ATitle: string);
+procedure TD2BridgeItemHTMLTabs.TD2BridgeItemHTMLTabItem.SetTitle(ATitle: string);
 begin
  FTitle:= ATitle;
+
+ (FD2BridgeItemHTMLTabs.PrismControl as TPrismTabs).AddTab(FIndex, ATitle);
 end;
 
 end.

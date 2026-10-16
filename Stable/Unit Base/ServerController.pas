@@ -9,7 +9,7 @@ interface
 Uses
  Classes, SysUtils,
  System.UITypes,
- D2Bridge.ServerControllerBase, D2Bridge.Types,
+ D2Bridge.ServerControllerBase, D2Bridge.Types, D2Bridge.JSON,
  Prism.Session, Prism.Server.HTTP.Commom, Prism.Types, Prism.Interfaces,
  {ProjectName}_Session;
 
@@ -30,6 +30,15 @@ type
    procedure OnIdleSession(Session: TPrismSession; var Renew: boolean);
    procedure OnException(Form: TObject; Sender: TObject; E: Exception; FormName: String; ComponentName: String; EventName: string; APrismSession: IPrismSession);
    procedure OnSecurity(const SecEventInfo: TSecuritEventInfo);
+   procedure OnRoute(const RestSession: TD2BridgeRestSession; const Request: TPrismHTTPRequest; const Response: TPrismHTTPResponse);
+   procedure OnBeforeServerStart;
+   procedure OnAfterServerStart;
+   procedure OnBeforeServerStop;
+   procedure OnAfterServerStop;
+   //Routes
+   //procedure GetPing(const RestSession: TD2BridgeRestSession; Request: TPrismHTTPRequest; Response: TPrismHTTPResponse);
+  protected
+   procedure RegisterRoutes(RestServer: TD2BridgeRestServer); override;
   public
    constructor Create(AOwner: TComponent); override;
 
@@ -48,7 +57,8 @@ implementation
 {%CLASSGROUP 'System.Classes.TPersistent'}
 
 Uses
- D2Bridge.Instance;
+ D2Bridge.Instance,
+ D2Bridge.Rest.Commom;
 
 {$IFNDEF FPC}
 {$R *.dfm}
@@ -73,6 +83,11 @@ begin
   Prism.OnIdleSession:= OnIdleSession;
   Prism.OnException:= OnException;
   Prism.OnSecurity:= OnSecurity;
+  Prism.OnRoute:= OnRoute;
+  prism.OnBeforeServerStart:= OnBeforeServerStart;
+  prism.OnAfterServerStart:= OnAfterServerStart;
+  prism.OnBeforeServerStop:= OnBeforeServerStop;
+  prism.OnAfterServerStop:= OnAfterServerStop;
  {$ENDIF}
 
  
@@ -82,6 +97,15 @@ begin
  {$IFNDEF D2BRIDGE}
   OnNewSession(nil, nil, D2BridgeInstance.PrismSession as TPrismSession);
  {$ENDIF}
+end;
+
+procedure T{ProjectName}WebAppGlobal.RegisterRoutes(RestServer: TD2BridgeRestServer);
+begin
+{
+ RestServer.AddGet('/api/ping', GetPing);
+ //or...
+ RestServer.AddGet('/api/test', nil);
+}
 end;
 
 procedure T{ProjectName}WebAppGlobal.OnException(Form, Sender: TObject; E: Exception; FormName, ComponentName, EventName: string; APrismSession: IPrismSession);
@@ -144,6 +168,32 @@ begin
   SecEventInfo.IP...
  end;
 }
+end;
+
+procedure T{ProjectName}WebAppGlobal.OnRoute(const RestSession: TD2BridgeRestSession; const Request: TPrismHTTPRequest; const Response: TPrismHTTPResponse);
+begin
+
+end;
+
+
+procedure T{ProjectName}WebAppGlobal.OnAfterServerStart;
+begin
+
+end;
+
+procedure T{ProjectName}WebAppGlobal.OnAfterServerStop;
+begin
+
+end;
+
+procedure T{ProjectName}WebAppGlobal.OnBeforeServerStart;
+begin
+
+end;
+
+procedure T{ProjectName}WebAppGlobal.OnBeforeServerStop;
+begin
+
 end;
 
 

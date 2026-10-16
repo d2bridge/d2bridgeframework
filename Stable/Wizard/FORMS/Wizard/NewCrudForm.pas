@@ -12,8 +12,6 @@ type
   T<CLASS_ID> = class(<CLASSINHERITED>)
   private
     { Private declarations }
-  public
-    { Public declarations }
   protected
     procedure ExportD2Bridge; override;
     procedure InitControlsD2Bridge(const PrismControl: TPrismControl); override;
@@ -27,6 +25,8 @@ type
     function CrudOnDelete: boolean; override;
     function CrudOnBack: boolean; override;
     function CrudOnClose: boolean; override;
+  public
+    { Public declarations }
   end;
 
 function <CLASS_ID>:T<CLASS_ID>;

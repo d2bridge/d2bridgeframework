@@ -5,7 +5,7 @@ unit UnitMenu;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Dialogs, Menus, StdCtrls,
+  Classes, SysUtils, Controls, Graphics, Dialogs, Menus, StdCtrls, ExtCtrls,
   D2Bridge.Forms; //Declare D2Bridge.Forms always in the last unit
 
 type
@@ -180,6 +180,11 @@ begin
     MenuItemFromCaption('QRCode Reader').Icon:= 'fa-solid fa-barcode';
     MenuItemFromCaption('Camera').Icon:= 'fa-solid fa-camera';
     MenuItemFromCaption('Close Session').Icon:= 'fa-solid fa-person-walking-dashed-line-arrow-right';
+
+    Image.URL:= 'images/lazarus.png';
+    Title:= 'Demo Lazarus';
+
+    Color:= $00B76009;
    end;
 
   //Menu example
