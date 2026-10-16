@@ -55,8 +55,17 @@ https://www.d2bridge.com.br
 
 
 ## Installation
-- First close all Delphi Open Instances
-- To install complete D2Bridge Framework and D2Bridge Wizard Use InstallD2Bridge in Wizard\InstallD2BridgeWizard.exe
+Do not use Wizard\InstallD2BridgeWizard.exe (prebuilt BPL per Delphi version; outdated BPL causes GUID errors).
+
+Install by compiling the package in your own IDE:
+
+- Delphi: open Wizard\Package\D2BridgeFrameworkWizard.dproj (Win32) → Compile → Install
+- Lazarus: open Wizard\Package\d2bridgeframeworkwizard.lpk → Use → Install
+
+Full steps:
+- Wizard\readMe.txt (English and Portuguese)
+- DOC\D2Bridge_Wizard_Install.md (Portuguese)
+- DOC\D2Bridge_Wizard_Install_EN.md (English)
 
     
 ## Support
