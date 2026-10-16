@@ -341,6 +341,7 @@ begin
 
       vItemColumnClasses.Add('celleditable');
 
+      JSONItemColumn.RemovePair('width').Free;
       JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width + vWidthEditCell) * vFatorWidth)));
 
 //      //Lookup Combobox Desativado para StringGrid - Alterar
@@ -387,7 +388,7 @@ begin
 //      end;
 
 
-      if Columns.Items[I].SelectItems.Count > 0 then
+      if Assigned(Columns.Items[I].SelectItems) and (Columns.Items[I].SelectItems.Count > 0) then
       begin
        if Columns.Items[I].DataFieldModel <> PrismFieldModelLookup then
         Columns.Items[I].DataFieldModel:= PrismFieldModelCombobox;
@@ -397,6 +398,7 @@ begin
        JSONItemColumnOptions.AddPair('style', 'width: 100%;box-sizing: border-box;');
 
        //Adjust Select ICON
+       JSONItemColumn.RemovePair('width').Free;
        JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width+vWidthIconSelect) * vFatorWidth)));
       end else
        JSONItemColumn.AddPair('edittype', 'text');

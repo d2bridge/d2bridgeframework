@@ -81,6 +81,7 @@ type
    function GetSelectedRowsID: TList<Integer>; override;
    procedure SetSelectedRowsID(Value: TList<Integer>); override;
    function GetEditable: Boolean; override;
+   function ColModelAllowsEditableColumns: Boolean;
    procedure UpdateData; override;
    procedure UpdateRow(aRecNo: Integer; aJSONData: string = '');
    procedure ReloadGrid;
@@ -353,6 +354,8 @@ begin
      JSONItemColumn:= TJSONObject.Create;
      vItemColumnClasses:= TStringList.Create;
      JSONItemColumnOptions:= TJSONObject.Create;
+     try
+     try
      //JSONArrayColModelOptions:= TJSONArray.Create;
 
      //if Columns.Items[I].DataFieldModel <> PrismFieldModelButton then
@@ -386,17 +389,21 @@ begin
      if Columns.Items[I].DataFieldModel = PrismFieldModelNone then
       Columns.Items[I].DataFieldModel:= PrismFieldModelField;
 
-     if (Columns.Items[I].Editable) and (FStoredEditable) then
+     { ColModel: usa dgEditing (ProcGetEditable). Nao usa FStoredEditable/
+       GetEditable — esses exigem AutoEdit e alimentam UpdateControls/setColProp. }
+     if (Columns.Items[I].Editable) and ColModelAllowsEditableColumns then
      begin
       JSONItemColumn.AddPair('editable', GetTJSONTrue);
 
       vItemColumnClasses.Add('celleditable');
 
+      JSONItemColumn.RemovePair('width').Free;
       JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width + vWidthEditCell) * vFatorWidth)));
 
       //Lookup Combobox
       if Columns.Items[I].DataField <> '' then
       if Assigned(FPrismDataLink.DataSource) then
+      if Assigned(FPrismDataLink.DataSet) then
       if Assigned(FPrismDataLink.DataSet.FindField(Columns.Items[I].DataField)) then
       begin
        if (FPrismDataLink.DataSet.FindField(Columns.Items[I].DataField).FieldKind = fkLookup) and
@@ -409,6 +416,7 @@ begin
         Columns.Items[I].DataFieldModel:= PrismFieldModelLookup;
 
         //Adjust Select ICON
+        JSONItemColumn.RemovePair('width').Free;
         JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width+vWidthIconSelect) * vFatorWidth)));
 
         if Assigned(Columns.Items[I].SelectItems) then
@@ -438,7 +446,7 @@ begin
       end;
 
 
-      if Columns.Items[I].SelectItems.Count > 0 then
+      if Assigned(Columns.Items[I].SelectItems) and (Columns.Items[I].SelectItems.Count > 0) then
       begin
        if Columns.Items[I].DataFieldModel <> PrismFieldModelLookup then
         Columns.Items[I].DataFieldModel:= PrismFieldModelCombobox;
@@ -448,6 +456,7 @@ begin
        JSONItemColumnOptions.AddPair('style', 'width: 100%;box-sizing: border-box;');
 
        //Adjust Select ICON
+       JSONItemColumn.RemovePair('width').Free;
        JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width+vWidthIconSelect) * vFatorWidth)));
       end else
        JSONItemColumn.AddPair('edittype', 'text');
@@ -455,7 +464,7 @@ begin
       //Get DataType
       if Columns.Items[I].DataField <> '' then
       if Columns.Items[I].DataFieldType = PrismFieldTypeAuto then
-      if Assigned(FPrismDataLink.DataSource) then
+      if Assigned(FPrismDataLink.DataSource) and Assigned(FPrismDataLink.DataSet) then
       begin
        if Assigned(FPrismDataLink.DataSet.FindField(Columns.Items[I].DataField)) then
        Columns.Items[I].DataFieldType := PrismFieldType(FPrismDataLink.DataSet.FindField(Columns.Items[I].DataField).DataType);
@@ -515,12 +524,24 @@ begin
      ResultColJSON:= StringReplace(ResultColJSON, '[NoQuotationMarks]"', '', [rfReplaceAll]);
   //   ResultColJSON:= StringReplace(ResultColJSON, '''''', '\''', [rfReplaceAll]);
 
-     Result.Add(Columns.Items[I].ColName, Form.ProcessAllTagHTML(ResultColJSON));
-
-     JSONItemColumn.Free;
-     vItemColumnClasses.Free;
-     JSONItemColumnOptions.Free;
-     ResultColJSON:= '';
+     Result.AddOrSetValue(Columns.Items[I].ColName, Form.ProcessAllTagHTML(ResultColJSON));
+      except
+       { Sem label o jqGrid exibe o name (FieldName). Preservar Title. }
+       Result.AddOrSetValue(Columns.Items[I].ColName,
+        '{"name":"'+Columns.Items[I].ColName+
+        '","index":'+IntToStr(Columns.Items[I].ColumnIndex)+
+        ',"label":"<div class=\"d2bridgedbgridtitle\">'+
+          StringReplace(Columns.Items[I].Title, '"', '', [rfReplaceAll])+
+        '</div>","editable":'+
+          LowerCase(BoolToStr(
+            (Columns.Items[I].Editable) and ColModelAllowsEditableColumns, True))+'}');
+      end;
+     finally
+      JSONItemColumn.Free;
+      vItemColumnClasses.Free;
+      JSONItemColumnOptions.Free;
+      ResultColJSON:= '';
+     end;
    //  JSONArrayColModelOptions.Free;
     end;
    end;
@@ -537,33 +558,38 @@ var
  I: Integer;
  vColModelToList: TDictionary<string,string>;
  vColumnIndex: Integer;
+ vColJSON: string;
 begin
  Result:= '';
 
  vColumnIndex:= 0;
 
  vColModelToList:= ColModelToList;
-
- repeat
-  for I := 0 to Pred(Columns.Items.Count) do
-  begin
-   if vColumnIndex = Columns.Items[I].ColumnIndex then
+ try
+  repeat
+   for I := 0 to Pred(Columns.Items.Count) do
    begin
-    if Columns.Items[I].Visible then
+    if vColumnIndex = Columns.Items[I].ColumnIndex then
     begin
-     if Result <> '' then
-      Result:= Result + ',' + sLineBreak;
+     if Columns.Items[I].Visible then
+     begin
+      if vColModelToList.TryGetValue(Columns.Items[I].ColName, vColJSON) then
+      begin
+       if Result <> '' then
+        Result:= Result + ',' + sLineBreak;
 
-      Result:= Result + vColModelToList.Items[Columns.Items[I].ColName]
+       Result:= Result + vColJSON;
+      end;
+     end;
     end;
    end;
-  end;
 
-  inc(vColumnIndex);
+   inc(vColumnIndex);
 
- until vColumnIndex >= Columns.Items.Count;
-
- vColModelToList.Free;
+  until vColumnIndex >= Columns.Items.Count;
+ finally
+  vColModelToList.Free;
+ end;
 end;
 
 constructor TPrismDBGrid.Create(AOwner: TObject);
@@ -679,10 +705,20 @@ begin
   Result:= FJSONData;
 end;
 
+function TPrismDBGrid.ColModelAllowsEditableColumns: Boolean;
+begin
+ { Somente metadado do colModel[].editable — nao altera FStoredEditable. }
+ if Assigned(ProcGetEditable) then
+  Result:= ProcGetEditable
+ else
+  Result:= FStoredEditable;
+end;
+
 function TPrismDBGrid.GetEditable: Boolean;
 var
  vResultCanEditing: boolean;
 begin
+ { Runtime / UpdateControls: exige AutoEdit ou Editing (comportamento original). }
  if Assigned(ProcGetEditable) then
   Result:= ProcGetEditable
  else
@@ -971,12 +1007,15 @@ procedure TPrismDBGrid.ProcessHTML;
 var
  I: Integer;
  HTMLText: TStringList;
+ vColModel: string;
 begin
  inherited;
 
  SetDataToJSON;
 
  HTMLText:= TStringList.Create;
+ try
+ try
 
  HTMLText.Add('<div class="col">');
  HTMLText.Add('<table '+HTMLCore+'>'+'</table>');
@@ -1039,7 +1078,10 @@ begin
   HTMLText.Add('celledit: false,');
  end;
  HTMLText.Add('cellsubmit: "remote",');
- HTMLText.Add('editurl: ''rest/json/jqgrid/post?controlid='+AnsiUpperCase(NamePrefix)+'&eventid='+Events.Item(EventOnCellPost).EventID+'&token='+Session.Token+'&prismsession='+Session.UUID+'&FormUUID='+Form.FormUUID+''',');
+ if Assigned(Events.Item(EventOnCellPost)) then
+  HTMLText.Add('editurl: ''rest/json/jqgrid/post?controlid='+AnsiUpperCase(NamePrefix)+'&eventid='+Events.Item(EventOnCellPost).EventID+'&token='+Session.Token+'&prismsession='+Session.UUID+'&FormUUID='+Form.FormUUID+''',')
+ else
+  HTMLText.Add('editurl: "",');
 
  //HTMLText.Add('cellurl: window.location.href + ''rest/json/jqgrid/changed/cell/value?controlid='+AnsiUpperCase(NamePrefix)+'&eventid='+Events.Item(EventOnLoadJSON).EventID+'&token='+Session.Token+'&prismsession='+Session.UUID+'&FormUUID='+Form.FormUUID+''',');
 
@@ -1069,7 +1111,12 @@ begin
  HTMLText.Add('   repeatitems: false');
  HTMLText.Add('},');
  //Colunas
- HTMLText.Add('colModel : '+ sLineBreak + '['+ColumnsToColModel+']' +',');
+ try
+  vColModel:= ColumnsToColModel;
+ except
+  vColModel:= '';
+ end;
+ HTMLText.Add('colModel : '+ sLineBreak + '['+vColModel+']' +',');
  //HTMLText.Add('data: JSONData'+AnsiUpperCase(NamePrefix)+',');
  //Pager
  if ShowPager then
@@ -1555,8 +1602,20 @@ begin
  //Form.HeadHTMLPrism:= HEADHTML;
 
  HTMLControl:= HTMLText.Text;
-
- HTMLText.Free;
+  except
+   on E: Exception do
+   begin
+    if Trim(HTMLControl) = '' then
+     HTMLControl:=
+      '<div class="col"><table '+HTMLCore+'></table>'+
+      '<!-- D2B '+NamePrefix+' '+E.ClassName+': '+
+      StringReplace(StringReplace(E.Message, '--', '', [rfReplaceAll]), '>', '', [rfReplaceAll])+
+      ' --></div>';
+   end;
+  end;
+ finally
+  HTMLText.Free;
+ end;
 end;
 
 
@@ -1757,7 +1816,6 @@ var
  NewRecNo: Integer;
  NewEditable, NewSelectedRow: Boolean;
  NewEnabled, NewVisible: boolean;
- vColumnsDict: TDictionary<string,string>;
  I: Integer;
 begin
  if (Form.FormPageState = PageStateLoaded) and FRefreshDataOnLoad then
@@ -1812,14 +1870,18 @@ begin
   ScriptJS.Add('SelectedCol'+AnsiUpperCase(NamePrefix)+' = -1;');
   ScriptJS.Add('lastEditRowID'+AnsiUpperCase(NamePrefix)+' = null;');
 
-  vColumnsDict:= ColModelToList;
-  for I := 0 to Pred(vColumnsDict.Count) do
-   ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).jqGrid("setColProp", "'+ vColumnsDict.Keys.ToArray[I]+'", ' + vColumnsDict.Values.ToArray[I] + ');');
-  vColumnsDict.Free;
+  { Nao reaplicar ColModelToList/setColProp completo: corrompe label (vira FieldName)
+    e editable. So atualiza a flag editable de cada coluna + celledit. }
+  for I := 0 to Pred(Columns.Items.Count) do
+   if Columns.Items[I].Visible then
+    ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).jqGrid("setColProp", "'+
+      Columns.Items[I].ColName+'", { editable: '+
+      BoolToStr(FStoredEditable and Columns.Items[I].Editable and ColModelAllowsEditableColumns, True).ToLower +
+      ' });');
 
   ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).jqGrid("setGridParam", '+
-    '"{ editable: '+ BoolToStr(FStoredEditable, True).ToLower +
-     ', celledit: ' + BoolToStr(FStoredEditable, True).ToLower + '}");');
+    '{ editable: '+ BoolToStr(FStoredEditable, True).ToLower +
+     ', celledit: ' + BoolToStr(FStoredEditable, True).ToLower + ' });');
 
   ScriptJS.Add(ClientGridReloadDataJS(FJSONData));
 

@@ -276,8 +276,7 @@ begin
    Title:= TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].Title.Caption;
    Visible:= TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].Visible;
    Width:= WidthPPI(TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].Width);
-   if (not TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly) then
-   Editable:= true;
+   Editable:= not TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly;
    case TJvDbGrid(FD2BridgeItemVCLObj.Item).Columns[I].Alignment of
     taLeftJustify : Alignment:= D2BridgeAlignColumnsLeft;
     taRightJustify : Alignment:= D2BridgeAlignColumnsRight;
