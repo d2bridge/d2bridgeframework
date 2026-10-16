@@ -741,13 +741,20 @@ begin
  begin
   try
    Controls[I].Initialize;
+  except
+  end;
 
+  try
    Controls[I].ProcessHTML;
+  except
+  end;
 
+  try
    //Call Event
    vHTMLControl:= Controls[I].HTMLControl;
    (Controls[I].Form as TPrismForm).D2BridgeForm.DoRenderPrismControl(Controls[I] as TPrismControl, vHTMLControl);
-   Controls[I].HTMLControl:= vHTMLControl;
+   if Trim(vHTMLControl) <> '' then
+    Controls[I].HTMLControl:= vHTMLControl;
   except
   end;
  end;
@@ -945,81 +952,60 @@ end;
 
 procedure TPrismForm.ProcessControlsToHTML(var HTMLText: String);
 var
- I, PosInit, PosEnd: Integer;
- vTemplateElement, vHTMLEment, vPrismHTMLControl: string;
- vIsTemplateHTMLElement: Boolean;
+ I, SearchFrom, PosInit, PosEnd, NameEnd, TokenLen: Integer;
+ TokenName, vHTML: string;
+ vFound: Boolean;
 begin
- for I:= 0 to Controls.Count-1 do
+ // Varre o HTML pelos tokens {%Nome ...%}. Nao depende de Unformated
+ // nem da ordem dos Controls. Avanca para DEPOIS do HTML inserido
+ // para o %} do <style> da grid editavel nao "comer" a proxima token.
+ SearchFrom:= 1;
+ while SearchFrom <= Length(HTMLText) do
  begin
-//  var vUnformatedHTMLControl := Controls[I].UnformatedHTMLControl;
-//  var vHTMLControl:= Controls[I].HTMLControl;
+  PosInit:= AnsiPos('{%', Copy(HTMLText, SearchFrom, MaxInt));
+  if PosInit < 1 then
+   Break;
+  PosInit:= PosInit + SearchFrom - 1;
 
-  if (Controls[I].HTMLControl <> '') and (Controls[I].UnformatedHTMLControl <> '') then
+  PosEnd:= AnsiPos('%}', Copy(HTMLText, PosInit, MaxInt));
+  if PosEnd < 1 then
+   Break;
+  PosEnd:= PosEnd + PosInit - 1;
+  TokenLen:= PosEnd - PosInit + 2;
+
+  NameEnd:= PosInit + 2;
+  while (NameEnd <= PosEnd) and (HTMLText[NameEnd] <> ' ') and (HTMLText[NameEnd] <> '%') do
+   Inc(NameEnd);
+  TokenName:= Copy(HTMLText, PosInit + 2, NameEnd - (PosInit + 2));
+
+  vHTML:= '';
+  vFound:= False;
+  if TokenName <> '' then
   begin
-   vTemplateElement:= '';
-
-   if ((TemplateMasterHTMLFile = '') and (TemplatePageHTMLFile = '')) or
-      (AnsiPos(Controls[I].UnformatedHTMLControl, HTMLText) > 0) then //No template defined or no TAG in template
-    HTMLText:= StringReplace(HTMLText, Controls[I].UnformatedHTMLControl, Controls[I].HTMLControl, [rfReplaceAll, rfIgnoreCase])
-   else
-   begin
-    //Adjuste HTML control to Template
-    if (AnsiPos('{%'+AnsiUpperCase(Controls[I].NamePrefix)+'%}', AnsiUpperCase(HTMLText)) > 0) then
+   for I:= 0 to Controls.Count-1 do
+    if SameText(Controls[I].NamePrefix, TokenName) or
+       SameText(Controls[I].Name, TokenName) then
     begin
-     vTemplateElement:= '{%'+Controls[I].NamePrefix+'%}';
-
-     //vHTMLEment:= ' id="'+AnsiUpperCase(Controls[I].NamePrefix)+'" ';
-     vHTMLEment:= Controls[I].HTMLCore;
-
-     vIsTemplateHTMLElement:= false;
-    end else
-    if AnsiPos('{%'+AnsiUpperCase(Controls[I].NamePrefix)+' ', AnsiUpperCase(HTMLText)) > 0 then
-    begin
-     PosInit := Pos('{%'+AnsiUpperCase(Controls[I].NamePrefix)+' ', AnsiUpperCase(HTMLText));
-     PosEnd := Pos('%}', Copy(AnsiUpperCase(HTMLText), PosInit-1, MaxInt));
-
-     vTemplateElement:= Copy(HTMLText, PosInit, PosEnd);
-
-     vHTMLEment:=
-       Copy(vTemplateElement,
-            Length('{%'+Controls[I].NamePrefix+' '),
-            PosEnd-Length('{%'+Controls[I].NamePrefix+' ')-1) +
-            ' id="'+AnsiUpperCase(Controls[I].NamePrefix)+'"';
-
-     if not Controls[I].Visible then
-      if POS('invisible', vHTMLEment) <= 0 then
-       vHTMLEment:= StringReplace(vHTMLEment, 'class="', 'class="invisible ', [rfIgnoreCase]);
-
-     if not Controls[I].Enabled then
-      if POS('disabled', vHTMLEment) <= 0 then
-       vHTMLEment:= StringReplace(vHTMLEment, 'class="', 'class="disabled ', [rfIgnoreCase]);
-
-     vIsTemplateHTMLElement:= true;
+     vFound:= True;
+     if Controls[I].HTMLControl = '' then
+     try
+      Controls[I].ProcessHTML;
+     except
+     end;
+     vHTML:= Controls[I].HTMLControl;
+     if vHTML = '' then
+      vHTML:= '<div class="col"><!-- D2B sem HTMLControl: '+TokenName+' --></div>';
+     Break;
     end;
-
-    if vTemplateElement <> '' then
-    begin
-     vPrismHTMLControl:=
-        StringReplace
-        (
-          Controls[I].HTMLControl,
-          Controls[I].HTMLCore,
-          vHTMLEment,
-          [rfIgnoreCase]
-        );
-
-     HTMLText:= StringReplace(HTMLText, vTemplateElement, vPrismHTMLControl, [rfIgnoreCase]);
-
-     if vIsTemplateHTMLElement then
-      Controls[I].HTMLCore:= vHTMLEment;
-
-     Controls[I].TemplateControl:= true;
-     D2BridgeForm.D2Bridge.HTML.Render.RemoveHTMLControlToBody(Controls[I].Name);
-    end;
-   end;
-
-   //HTMLText:= StringReplace(HTMLText, 'id="'+AnsiUpperCase(Controls[I].Name)+'"', 'id="'+AnsiUpperCase(Controls[I].NamePrefix)+'"', [rfIgnoreCase, rfReplaceAll]);
   end;
+
+  if vFound and (vHTML <> '') then
+  begin
+   Delete(HTMLText, PosInit, TokenLen);
+   Insert(vHTML, HTMLText, PosInit);
+   SearchFrom:= PosInit + Length(vHTML);
+  end else
+   SearchFrom:= PosEnd + 2;
  end;
 end;
 

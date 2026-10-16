@@ -279,14 +279,13 @@ begin
     if TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].Title.Font.Style <> [] then
      TitleFontStyles:= TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].Title.Font.Style;
    end;
-   if (not TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly) then
-   Editable:= true;
+   Editable:= not TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly;
    case TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].Alignment of
     taLeftJustify : Alignment:= D2BridgeAlignColumnsLeft;
     taRightJustify : Alignment:= D2BridgeAlignColumnsRight;
     taCenter : Alignment:= D2BridgeAlignColumnsCenter;
    end;
-   //Load combobox Itens
+   //Load combobox Itens (SelectItems ja nasce criado no FrameworkItem)
    for J := 0 to Pred(TDBGrid(FD2BridgeItemVCLObj.Item).Columns[I].PickList.Count) do
    begin
     if J = 0 then

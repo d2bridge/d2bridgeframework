@@ -1559,7 +1559,7 @@ begin
      begin
       xPage429:= PrismBaseClass.PrismServerHTML.GetError429(xPrismRequest.AcceptLanguage);
       xIOHandle.WriteLn('HTTP/1.1 429 Too Many Requests');
-      xIOHandle.WriteLn('Retry-After: 60'); // Tempo em segundos até tentar novamente
+      xIOHandle.WriteLn('Retry-After: 60'); // Tempo em segundos atï¿½ tentar novamente
       xIOHandle.WriteLn('Content-Type: text/html; charset=UTF-8');
       //xIOHandle.WriteLn('Content-Length: ' + IntToStr(Length(xPage429)));
 {$IFDEF D2DOCKER}
@@ -1580,7 +1580,7 @@ begin
    //Result:= true;
   end;
 
-  // Encerre a conexão
+  // Encerre a conexï¿½o
   try
    if xContext.Connection <> nil then
     if xContext.Connection.Connected then
@@ -1667,7 +1667,7 @@ begin
   begin
    {$REGION 'Apple'}
 
-   //Checar se PrismSession é valido
+   //Checar se PrismSession ï¿½ valido
 
     if xPrismRequest.WebMethod = wmtPOST then
     begin
@@ -1720,7 +1720,7 @@ begin
  except
  end;
 
- // Encerre a conexão
+ // Encerre a conexï¿½o
  try
   if xContext.Connection <> nil then
    if xContext.Connection.Connected then
@@ -1849,7 +1849,7 @@ begin
   for i := 0 to High(EscapeChars) do
     vFileName := StringReplace(vFileName, Char(StrToInt('$' + Copy(EscapeChars[i], 2, 2))), EscapeChars[i], [rfReplaceAll]);
 
-  // Reverter a substituição do espaço em branco para o sinal de mais
+  // Reverter a substituiï¿½ï¿½o do espaï¿½o em branco para o sinal de mais
   vFileName := StringReplace(vFileName, ' ', '%2B', [rfReplaceAll]);
 end;
 
@@ -2415,7 +2415,7 @@ begin
   for i := 0 to High(EscapeChars) do
     vFileName := StringReplace(vFileName, EscapeChars[i], Char(StrToInt('$' + Copy(EscapeChars[i], 2, 2))), [rfReplaceAll]);
 
-  // Além disso, substituir o sinal de mais por espaço em branco
+  // Alï¿½m disso, substituir o sinal de mais por espaï¿½o em branco
   vFileName := StringReplace(vFileName, '%2B', ' ', [rfReplaceAll]);
 end;
 

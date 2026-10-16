@@ -617,7 +617,11 @@ begin
  PosInit:= AnsiPos('{%'+ NamePrefix+' ', AHTMLText);
  if PosInit = 0 then
   PosInit:= AnsiPos('{%'+ NamePrefix+'%}', AHTMLText);
- PosEnd:= AnsiPos('%}', AHTMLText);
+ // Fecha o token desta control (primeiro %} APOS o {%NamePrefix),
+ // nao o primeiro %} do bloco inteiro (quebra a grid do meio).
+ PosEnd:= 0;
+ if PosInit >= 1 then
+  PosEnd:= AnsiPos('%}', Copy(AHTMLText, PosInit, MaxInt));
 
  NameControlPosInit:= PosInit+3;
  NameControlPosEnd:= NameControlPosInit + Length(NamePrefix);
@@ -627,9 +631,9 @@ begin
   FUnformatedHTMLControl:= Copy(AHTMLText, PosInit, PosEnd+1);
 
   if (AnsiPos(' ID="'+AnsiUpperCase(NamePrefix)+'"', AnsiUpperCase(FUnformatedHTMLControl)) <= 0) then
-  HTMLCore:= Copy(AHTMLText, NameControlPosEnd, PosEnd - NameControlPosEnd) + ' id="'+AnsiUpperCase(NamePrefix)+'" '
+  HTMLCore:= Copy(AHTMLText, NameControlPosEnd, (PosInit + PosEnd - 1) - NameControlPosEnd) + ' id="'+AnsiUpperCase(NamePrefix)+'" '
   else
-  HTMLCore:= Copy(AHTMLText, NameControlPosEnd, PosEnd - NameControlPosEnd);
+  HTMLCore:= Copy(AHTMLText, NameControlPosEnd, (PosInit + PosEnd - 1) - NameControlPosEnd);
 
   //not Enabled
   vEnabled := Enabled;

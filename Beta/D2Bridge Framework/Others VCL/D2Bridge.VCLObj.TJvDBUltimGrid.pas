@@ -277,8 +277,7 @@ begin
    Title:= TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].Title.Caption;
    Visible:= TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].Visible;
    Width:= WidthPPI(TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].Width);
-   if (not TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly) then
-   Editable:= true;
+   Editable:= not TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].ReadOnly;
    case TJvDBUltimGrid(FD2BridgeItemVCLObj.Item).Columns[I].Alignment of
     taLeftJustify : Alignment:= D2BridgeAlignColumnsLeft;
     taRightJustify : Alignment:= D2BridgeAlignColumnsRight;
