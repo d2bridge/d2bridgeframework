@@ -97,6 +97,7 @@ type
    function CaptionSave: string;
    function CaptionEdit: string;
    function CaptionDelete: string;
+   function CaptionDecrease: string;
    function CaptionCancel: string;
    function CaptionClose: string;
    function CaptionSearch: string;
@@ -373,6 +374,11 @@ end;
 function TD2BridgeTermButton.CaptionDelete: string;
 begin
  Result:= Language.Translate(Context, 'CaptionDelete');
+end;
+
+function TD2BridgeTermButton.CaptionDecrease: string;
+begin
+ Result:= Language.Translate(Context, 'CaptionDecrease');
 end;
 
 function TD2BridgeTermButton.CaptionDownload: string;
