@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -272,6 +278,9 @@ end;
 destructor TD2BridgeLangCoreBaseClass.Destroy;
 var
  vLang: TD2BridgeLang;
+ vPortuguese, vEnglish, vSpanish, vArabic, vItalian, vFrench,
+ vGerman, vJapanese, vRussian, vChinese, vCzech, vTurkish,
+ vKorean, vRomanian, vPersian, vThai, vUkrainian, vPolish: TD2BridgeLangBaseClass;
 begin
  if Assigned(FLogMissing) then
   FreeAndNil(FLogMissing);
@@ -280,58 +289,130 @@ begin
   FreeAndNil(FJSONDefaultLang);
 
  if Assigned(FPortuguese) then
-  (FPortuguese as TD2BridgeLangBaseClass).Free;
+ begin
+  vPortuguese:= FPortuguese as TD2BridgeLangBaseClass;
+  FPortuguese:= nil;
+  vPortuguese.Free;
+ end;
 
  if Assigned(FEnglish) then
-  (FEnglish as TD2BridgeLangBaseClass).Free;
+ begin
+  vEnglish:= FEnglish as TD2BridgeLangBaseClass;
+  FEnglish:= nil;
+  vEnglish.Free;
+ end;
 
  if Assigned(FSpanish) then
-  (FSpanish as TD2BridgeLangBaseClass).Free;
+ begin
+  vSpanish:= FSpanish as TD2BridgeLangBaseClass;
+  FSpanish:= nil;
+  vSpanish.Free;
+ end;
 
  if Assigned(FArabic) then
-  (FArabic as TD2BridgeLangBaseClass).Free;
+ begin
+  vArabic:= FArabic as TD2BridgeLangBaseClass;
+  FArabic:= nil;
+  vArabic.Free;
+ end;
 
  if Assigned(FItalian) then
-  (FItalian as TD2BridgeLangBaseClass).Free;
+ begin
+  vItalian:= FItalian as TD2BridgeLangBaseClass;
+  FItalian:= nil;
+  vItalian.Free;
+ end;
 
  if Assigned(FFrench) then
-  (FFrench as TD2BridgeLangBaseClass).Free;
+ begin
+  vFrench:= FFrench as TD2BridgeLangBaseClass;
+  FFrench:= nil;
+  vFrench.Free;
+ end;
 
  if Assigned(FGerman) then
-  (FGerman as TD2BridgeLangBaseClass).Free;
+ begin
+  vGerman:= FGerman as TD2BridgeLangBaseClass;
+  FGerman:= nil;
+  vGerman.Free;
+ end;
 
  if Assigned(FJapanese) then
-  (FJapanese as TD2BridgeLangBaseClass).Free;
+ begin
+  vJapanese:= FJapanese as TD2BridgeLangBaseClass;
+  FJapanese:= nil;
+  vJapanese.free;
+ end;
 
  if Assigned(FRussian) then
-  (FRussian as TD2BridgeLangBaseClass).Free;
+ begin
+  vRussian:= FRussian as TD2BridgeLangBaseClass;
+  FRussian:= nil;
+  vRussian.free;
+ end;
 
  if Assigned(FChinese) then
-  (FChinese as TD2BridgeLangBaseClass).Free;
+ begin
+  vChinese:= FChinese as TD2BridgeLangBaseClass;
+  FChinese:= nil;
+  vChinese.Free;
+ end;
 
  if Assigned(FCzech) then
-  (FCzech as TD2BridgeLangBaseClass).Free;
+ begin
+  vCzech:= FCzech as TD2BridgeLangBaseClass;
+  FCzech:= nil;
+  vCzech.Free;
+ end;
 
  if Assigned(FTurkish) then
-  (FTurkish as TD2BridgeLangBaseClass).Free;
+ begin
+  vTurkish:= FTurkish as TD2BridgeLangBaseClass;
+  FTurkish:= nil;
+  vTurkish.Free;
+ end;
 
  if Assigned(FKorean) then
-  (FKorean as TD2BridgeLangBaseClass).Free;
+ begin
+  vKorean:= FKorean as TD2BridgeLangBaseClass;
+  FKorean:= nil;
+  vKorean.Free;
+ end;
 
  if Assigned(FRomanian) then
-  (FRomanian as TD2BridgeLangBaseClass).Free;
+ begin
+  vRomanian:= FRomanian as TD2BridgeLangBaseClass;
+  FRomanian:= nil;
+  vRomanian.Free;
+ end;
 
  if Assigned(FPersian) then
-  (FPersian as TD2BridgeLangBaseClass).Free;
+ begin
+  vPersian:= FPersian as TD2BridgeLangBaseClass;
+  FPersian:= nil;
+  vPersian.Free;
+ end;
 
  if Assigned(FThai) then
-  (FThai as TD2BridgeLangBaseClass).Free;
+ begin
+  vThai:= FThai as TD2BridgeLangBaseClass;
+  FThai:= nil;
+  vThai.Free;
+ end;
 
  if Assigned(FUkrainian) then
-  (FUkrainian as TD2BridgeLangBaseClass).Free;
+ begin
+  vUkrainian:= FUkrainian as TD2BridgeLangBaseClass;
+  FUkrainian:= nil;
+  vUkrainian.Free;
+ end;
 
  if Assigned(FPolish) then
-  (FPolish as TD2BridgeLangBaseClass).Free;
+ begin
+  vPolish:= FPolish as TD2BridgeLangBaseClass;
+  FPolish:= nil;
+  vPolish.Free;
+ end;
 
  FLanguages:= [];
 

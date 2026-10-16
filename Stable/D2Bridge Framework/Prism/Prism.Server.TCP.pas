@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -29,11 +35,12 @@ unit Prism.Server.TCP;
 interface
 
 uses
-  SysUtils, Classes, StrUtils, DateUtils, Generics.Collections, RTTI,
+  SysUtils, Classes, StrUtils, DateUtils, Generics.Collections, RTTI, Variants,
   D2Bridge.JSON,
 {$IFNDEF FPC}
+  NetEncoding,
 {$ELSE}
-  LazUtf8,
+  LazUtf8, base64,
 {$ENDIF}
 {$IFDEF MSWINDOWS}
   Windows,
@@ -60,7 +67,7 @@ type
  TOnFinishedGetHTML = procedure(APrismWSContext: TPrismWebSocketContext) of object;
  TOnGetFile = procedure(const APrismRequest: TPrismHTTPRequest; const AGetFileName: string; var AResponseFileName: string; var AResponseFileContent: string; var AResponseRedirect: string; var AMimeType: string) of object;
  TOnReceiveMessage = function(AMessage: TPrismWebSocketMessage; PrismWSContext: TPrismWebSocketContext): string of object;
-
+ TOnParseFile = procedure(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext) of object;
 
 type
 
@@ -69,8 +76,8 @@ type
   TPrismServerTCP = class(TIdCustomTCPServer)
   strict private
 {$IFDEF D2BRIDGE}
-   procedure Exec_OpenForm(varContext, varHeader, varPrismWSContext: TValue);
-   procedure Exec_RouteAuth(varContext, varHeader: TValue);
+   procedure Exec_OpenForm(varContext, varPrismHTTPRequest, varPrismWSContext: TValue);
+   procedure Exec_RouteAuth(varContext, varPrismHTTPRequest: TValue);
    procedure Exec_ReceiveMessage(varPrismWebSocketMessage, varPrismWSContext: TValue);
 {$ENDIF}
   private
@@ -80,26 +87,26 @@ type
    FOnFinishedGetHTML: TOnFinishedGetHTML;
    FOnRESTData: TOnRESTData;
    FOnDownloadData: TOnDownloadData;
+   FOnParseFile: TOnParseFile;
    IdServerIOHandlerSSLOpenSSL: TIdServerIOHandlerSSLOpenSSL;
    FRootDirectory: string;
    FMimesType: TPrismServerFileExtensions;
-   FVirtualPath: string;
+   FAppBase: string;
    function IdContextConnected(AContext: TIdContext): boolean;
    function MimesType: TPrismServerFileExtensions;
-   function ParseHeaders(AContext: TIdContext; const AHTMLHeader: string): TPrismHTTPHeader;
    procedure InterceptExecute(AContext: TIdContext);
    procedure DoGetHTML(AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext); virtual;
    procedure DoDownloadData(AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext); virtual;
    procedure DoRESTData(AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext); virtual;
+   procedure DoParseFile(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext); virtual;
    procedure DoFinishedGetHTML(APrismWSContext: TPrismWebSocketContext);
    function DoReceiveMessage(AMessage: string; PrismWSContext: TPrismWebSocketContext): string; virtual;
    procedure DoUploadFile(AFiles: TStrings; PrismSession: IPrismSession; AFormUUID, ASender: string);
    function FormatReceivedMesssage(AMessage: string): TPrismWebSocketMessage;
-   procedure ReadMultipartFormData(IOHandler: TIdIOHandler; Boundary: String; ContentLength: Integer; AFiles: TStrings; ASender: string; PrismWSContext: TPrismWebSocketContext);
-   function ReadBodyStringFromData(IOHandler: TIdIOHandler; ContentLength: Integer): string;
-   function ReadBodyStreamFromData(IOHandler: TIdIOHandler; ContentLength: Integer): TMemoryStream;
    procedure RemoveEscapeFromFileURL(var vFileName: string);
    procedure InsertEscapeToFileURL(var vFileName: string);
+   function GetAppBase: string;
+   procedure SetAppBase(const Value: string);
   protected
 {$IFDEF D2BRIDGE}
    procedure DoConnect(AContext: TIdContext); override;
@@ -118,6 +125,12 @@ type
    constructor Create;
    destructor Destroy; override;
 
+   function ParseHeaders(AContext: TIdContext; const AHTMLHeader: string): TPrismHTTPRequest;
+
+   procedure ReadMultipartFormData(IOHandler: TIdIOHandler; Boundary: String; ContentLength: Integer; AFiles: TStrings; ASender: string; PrismWSContext: TPrismWebSocketContext);
+   function ReadBodyStringFromData(IOHandler: TIdIOHandler; ContentLength: Integer): string;
+   function ReadBodyStreamFromData(IOHandler: TIdIOHandler; ContentLength: Integer): TMemoryStream;
+
    procedure SendWebSocketMessage(AMessage: string; APrismSession: IPrismSession);
    procedure DisconnectWebSocketMessage(APrismSession: IPrismSession; NilPrismSession: Boolean = false);
    procedure CloseAllConnection;
@@ -125,14 +138,16 @@ type
 
    function OpenSSL: TIdServerIOHandlerSSLOpenSSL;
 
+   property AppBase: string read GetAppBase write SetAppBase;
+
    property OnGetHTML: TOnGetHTML read FOnGetHTML write FOnGetHTML;
    property OnGetFile: TOnGetFile read FOnGetFile write FOnGetFile;
    property OnFinishedGetHTML: TOnFinishedGetHTML read FOnFinishedGetHTML write FOnFinishedGetHTML;
    property OnReceiveMessage: TOnReceiveMessage read FOnReceiveMessage write FOnReceiveMessage;
    property OnRESTData: TOnRestData read FOnRestData write FOnRestData;
    property OnDownloadData: TOnDownloadData read FOnDownloadData write FOnDownloadData;
+   property OnParseFile: TOnParseFile read FOnParseFile write FOnParseFile;
    property RootDirectory: string read FRootDirectory write FRootDirectory;
-   property VirtualPath: string read FVirtualPath write FVirtualPath;
    //property OnCommandGet;
    //property OnExecute;
   end;
@@ -160,6 +175,7 @@ implementation
 uses
   Prism.BaseClass, Prism.Session, Prism.Session.Helper, Prism.Options.Security.Event,
   D2Bridge.Lang.Core, D2Bridge.API.Auth, D2Bridge.Util,
+  D2Bridge.Rest.Route,
   IdTCPConnection;
 
 
@@ -195,7 +211,8 @@ begin
   IdServerIOHandlerSSLOpenSSL := nil;
 
   FRootDirectory:= 'wwwroot' + PathDelim;
-  FVirtualPath:= '/';
+
+  FAppBase:= '/';
 
 
   //OnExecute := InterceptExecute;
@@ -371,10 +388,10 @@ end;
 {$IFDEF D2BRIDGE}
 function TPrismServerTCP.DoExecute(AContext: TIdContext): Boolean;
 var
+  I: integer;
   c: TIdIOHandler;
   vPrismWSContext: TPrismWebSocketContext;
   SecWebSocketKey, Hash: string;
-  vHeader: TPrismHTTPHeader;
   vPrismRequest: TPrismHTTPRequest;
   vPrismResponse: TPrismHTTPResponse;
   RequestLine, Headers, Line: string;
@@ -389,6 +406,7 @@ var
   vPOSTStrContent: string;
   vPageError403BlackList: string;
   vContentLength: Integer;
+  vContentStr: string;
   idHashSHA1: TIdHashSHA1;
   vUploadOrigin: string;
   vUploadFilesList: TStrings;
@@ -434,9 +452,9 @@ begin
     Line := AContext.Connection.IOHandler.ReadLn;
     Headers := Headers + Line + sLineBreak;
 
-      if AContext.Connection <> nil then
-        if AContext.Connection.Connected then
-         AContext.Connection.IOHandler.Connected
+//      if AContext.Connection <> nil then
+//        if AContext.Connection.Connected then
+//         AContext.Connection.IOHandler.Connected
 
    until (Headers = sLineBreak) or (Line = '') or
          (AContext.Connection = nil) or
@@ -449,17 +467,33 @@ begin
    exit;
   end;
 
-  vHeader:= ParseHeaders(AContext, Headers);
+  vPrismRequest:= ParseHeaders(AContext, Headers);
 
-  if (vHeader.IPListedInBlackList) then  //BlackList
+
+  if (not Assigned(vPrismRequest.Route)) and (not Assigned(PrismBaseClass.ServerController.PrimaryFormClass)) then
   begin
-   if (vHeader.WebMethod = wmtPOST) and
+   vPrismRequest.Free;
+
+   try
+    if AContext.Connection <> nil then
+     if AContext.Connection.Connected then
+     begin
+      AContext.Connection.IOHandler.Close;
+      AContext.Connection.IOHandler.Free;
+      AContext.Connection.Disconnect;
+     end;
+   except
+   end;
+  end else
+  if (vPrismRequest.IPListedInBlackList) then  //BlackList
+  begin
+   if (vPrismRequest.WebMethod = wmtPOST) and
       (PrismBaseClass.Options.Security.IP.IPv4BlackList.EnableSelfDelist) and
-      (not vHeader.UserAgentBlocked) and
-      (AnsiPos('/security/blacklist/delist', vHeader.Path) > 0) and
-      (vHeader.ContentType = 'application/json') and
-      (TryStrToInt(vHeader.ContentLength, vContentLength)) and
-      (PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(vHeader.ClientIP)) then
+      (not vPrismRequest.UserAgentBlocked) and
+      (AnsiPos('/security/blacklist/delist', vPrismRequest.Path) > 0) and
+      (vPrismRequest.ContentType = 'application/json') and
+      (TryStrToInt(vPrismRequest.ContentLength, vContentLength)) and
+      (PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(vPrismRequest.ClientIP)) then
    begin
     try
      vPOSTStrContent:= ReadBodyStringFromData(c, vContentLength);
@@ -467,11 +501,11 @@ begin
      if (IsJSONValid(vPOSTStrContent)) then
       vJSON:= TJSONObject.ParseJSONValue(vPOSTStrContent) as TJSONObject;
 
-     if Assigned(vJSON) and PrismBaseClass.Options.Security.IP.IPv4BlackList.IsValidTokenDelist(vHeader.ClientIP, vJSON, true) then
+     if Assigned(vJSON) and PrismBaseClass.Options.Security.IP.IPv4BlackList.IsValidTokenDelist(vPrismRequest.ClientIP, vJSON, true) then
      begin
-      EventDelistIPBlackList(vHeader.ClientIP, vHeader.UserAgent);
+      EventDelistIPBlackList(vPrismRequest.ClientIP, vPrismRequest.UserAgent);
 
-      PrismBaseClass.Options.Security.IP.IPv4WhiteList.Add(vHeader.ClientIP);
+      PrismBaseClass.Options.Security.IP.IPv4WhiteList.Add(vPrismRequest.ClientIP);
 
       vResponseContent:= '{"success" : true, "message" : "Delist Ok"}';
       c.WriteLn('HTTP/1.1 200 OK');
@@ -479,11 +513,14 @@ begin
       c.WriteLn('Content-Type: application/json; charset=UTF-8');
       c.WriteLn('Content-Length: ' + IntToStr(Length(vResponseContent)));
       c.WriteLn('Connection: Close');
+{$IFDEF D2DOCKER}
+       c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
       c.WriteLn('');
       c.Write(vResponseContent, IndyTextEncoding_UTF8);
      end else
      begin
-      EventNotDelistIPBlackList(vHeader.ClientIP, vHeader.UserAgent);
+      EventNotDelistIPBlackList(vPrismRequest.ClientIP, vPrismRequest.UserAgent);
 
       vResponseContent:= '{success: false, message: "Invalid token or request not allowed"}';
       c.WriteLn('HTTP/1.1 403 Forbidden');
@@ -491,6 +528,9 @@ begin
       c.WriteLn('Content-Type: application/json; charset=UTF-8');
       c.WriteLn('Content-Length: ' + IntToStr(Length(vResponseContent)));
       c.WriteLn('Connection: Close');
+{$IFDEF D2DOCKER}
+       c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
       c.WriteLn('');
       c.WriteLn(vResponseContent, IndyTextEncoding_UTF8);
      end;
@@ -498,36 +538,42 @@ begin
     end;
     vJSON.Free;
    end else
-   if (vHeader.WebMethod = wmtGET) and
+   if (vPrismRequest.WebMethod = wmtGET) and
       (PrismBaseClass.Options.Security.IP.IPv4BlackList.EnableSelfDelist) and
-      (not vHeader.UserAgentBlocked) and
-      ((vHeader.Path = '/') or (vHeader.Path = '') or (Copy(vHeader.Path, 1,2) = '/?') or (vHeader.Path = VirtualPath)) and
-      (PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(vHeader.ClientIP)) then
+      (not vPrismRequest.UserAgentBlocked) and
+      ((vPrismRequest.Path = '/') or (vPrismRequest.Path = '') or (Copy(vPrismRequest.Path, 1,2) = '/?') or (vPrismRequest.Path = '/')) and //VirtualPath
+      (PrismBaseClass.Options.Security.IP.IPConnections.IsIPAllowed(vPrismRequest.ClientIP)) then
    begin
-    EventBlockIPBlackList(vHeader.ClientIP, vHeader.UserAgent);
+    EventBlockIPBlackList(vPrismRequest.ClientIP, vPrismRequest.UserAgent);
 
-    vPageError403BlackList:= PrismBaseClass.PrismServerHTML.GetErrorBlackList(vHeader.AcceptLanguage);
-    vPageError403BlackList:= StringReplace(vPageError403BlackList, '{{ip}}', vHeader.ClientIP, [rfReplaceAll]);
-    vPageError403BlackList:= StringReplace(vPageError403BlackList, '{{token}}', PrismBaseClass.Options.Security.IP.IPv4BlackList.CreateTokenDelist(vHeader.ClientIP), [rfReplaceAll]);
+    vPageError403BlackList:= PrismBaseClass.PrismServerHTML.GetErrorBlackList(vPrismRequest.AcceptLanguage);
+    vPageError403BlackList:= StringReplace(vPageError403BlackList, '{{ip}}', vPrismRequest.ClientIP, [rfReplaceAll]);
+    vPageError403BlackList:= StringReplace(vPageError403BlackList, '{{token}}', PrismBaseClass.Options.Security.IP.IPv4BlackList.CreateTokenDelist(vPrismRequest.ClientIP), [rfReplaceAll]);
 
     c.WriteLn('HTTP/1.1 403 Forbidden');
     c.WriteLn('Content-Type: text/html; charset=UTF-8');
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     //c.WriteLn('Content-Length: ' + IntToStr(IndyLength(vPageError403BlackList)));
     c.WriteLn('');
     c.Write(vPageError403BlackList, IndyTextEncoding_UTF8);
    end else
    begin
-    EventBlockIPBlackList(vHeader.ClientIP, vHeader.UserAgent);
+    EventBlockIPBlackList(vPrismRequest.ClientIP, vPrismRequest.UserAgent);
 
     c.WriteLn('HTTP/1.1 403 Forbidden');
     c.WriteLn('Content-Type: text/plain');
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     c.WriteLn('');
     c.WriteLn('D2Bridge Framework Application');
     c.WriteLn('Access Denied');
-    c.Write('Your IP ' + vHeader.ClientIP + ' listed in BlackList');
+    c.Write('Your IP ' + vPrismRequest.ClientIP + ' listed in BlackList');
    end;
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -540,16 +586,19 @@ begin
    except
    end;
   end else
-  if (vHeader.UserAgentBlocked)  then
+  if (vPrismRequest.UserAgentBlocked)  then
   begin
-   EventBlockUserAgent(vHeader.ClientIP, vHeader.UserAgent);
+   EventBlockUserAgent(vPrismRequest.ClientIP, vPrismRequest.UserAgent);
 
    c.WriteLn('HTTP/1.1 451 Unavailable For Legal Reasons');
    c.WriteLn('Content-Type: text/plain');
+{$IFDEF D2DOCKER}
+    c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
    c.WriteLn('');
    c.WriteLn('Blocked by User-Agent Policy');
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -562,13 +611,28 @@ begin
    except
    end;
   end else
-  if (vHeader.Purpose = 'prefetch')  then
+  if (vPrismRequest.Purpose = 'prefetch')  then
   begin
-   c.WriteLn('HTTP/1.1 204 Found');
+   vContentStr:= '{"status":204,"serveruuid":"'+PrismBaseClass.ServerUUID+'"}';
+   if SameText(vPrismRequest.Accept, 'application/json') then
+    c.WriteLn('HTTP/1.1 200 OK')
+   else
+    c.WriteLn('HTTP/1.1 204 Found');
    c.WriteLn('Connection: Close');
+   c.WriteLn('Server: '+fServerName);
+   if SameText(vPrismRequest.Accept, 'application/json') then
+   begin
+    c.WriteLn('Content-Type: application/json; charset=UTF-8');
+    c.WriteLn('Content-Length: ' + IntToStr(Length(vContentStr)));
+   end;
+{$IFDEF D2DOCKER}
+    c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
    c.WriteLn('');
+   if SameText(vPrismRequest.Accept, 'application/json') then
+    c.WriteLn(vContentStr);
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -581,23 +645,29 @@ begin
    except
    end;
   end else
-  if (vHeader.WebMethod = wmtHEAD) and (AnsiPos('reconnect?token=', vHeader.Path) > 0)  then
+  if (vPrismRequest.WebMethod = wmtHEAD) and (AnsiPos('reconnect?token=', vPrismRequest.Path) > 0)  then
   begin
-   if PrismBaseClass.Sessions.Exist(vHeader.QueryParams.Values['prismsession'], vHeader.QueryParams.Values['token']) then
+   if PrismBaseClass.Sessions.Exist(vPrismRequest.QueryParams.Values['prismsession'], vPrismRequest.QueryParams.Values['token']) then
    begin
     c.WriteLn('HTTP/1.1 202 Accepted');
     c.WriteLn('Connection: Close');
     c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     c.WriteLn('');
    end else
    begin
     c.WriteLn('HTTP/1.1 401 Unauthorized');
     c.WriteLn('Connection: Close');
     c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     c.WriteLn('');
    end;
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -610,18 +680,18 @@ begin
    except
    end;
   end else
-  if (AnsiPos(FpathUpload, vHeader.Path) > 0) or (vHeader.IsUploadFile) then
+  if (AnsiPos(FpathUpload, vPrismRequest.Path) > 0) or (vPrismRequest.IsUploadFile) then
   begin
-   if (vHeader.Boundary <> '') and TryStrToInt(vHeader.ContentLength, ContentLength) and (ContentLength > 0)  then
+   if (vPrismRequest.Boundary <> '') and TryStrToInt(vPrismRequest.ContentLength, ContentLength) and (ContentLength > 0)  then
    begin
     vPrismWSContext := TPrismWebSocketContext.Create;
 
-    vPrismWSContext.Token := vHeader.QueryParams.Values['token'];
-    vPrismWSContext.ChannelName := vHeader.QueryParams.Values['channelname'];
-    vPrismWSContext.PrismSessionUUID := vHeader.QueryParams.Values['prismsession'];
-    vPrismWSContext.FormUUID := vHeader.QueryParams.Values['formuuid'];
-    vUploadOrigin:= vHeader.QueryParams.Values['origin'];
-    vUploadSender:= vHeader.QueryParams.Values['sender'];
+    vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+    vPrismWSContext.ChannelName := vPrismRequest.QueryParams.Values['channelname'];
+    vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+    vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['formuuid'];
+    vUploadOrigin:= vPrismRequest.QueryParams.Values['origin'];
+    vUploadSender:= vPrismRequest.QueryParams.Values['sender'];
 
     if (vPrismWSContext.PrismSessionUUID <> '') and
        (vPrismWSContext.FormUUID <> '') and
@@ -636,11 +706,14 @@ begin
        vPrismWSContext.PrismSession:= vPrismSession;
 
        vUploadFilesList:= TStringList.Create;
-       ReadMultipartFormData(c, vHeader.Boundary, ContentLength, vUploadFilesList, vUploadSender, vPrismWSContext);
+       ReadMultipartFormData(c, vPrismRequest.Boundary, ContentLength, vUploadFilesList, vUploadSender, vPrismWSContext);
 
        c.WriteLn('HTTP/1.1 200 OK');
        c.WriteLn('Connection: Close');
        c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+        c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
        c.WriteLn('');
        if (vUploadOrigin = 'editor') and (vUploadFilesList.Count > 0) then
        begin
@@ -659,7 +732,7 @@ begin
     FreeAndNil(vPrismWSContext);
    end;
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -672,20 +745,18 @@ begin
    except
    end;
   end else
-  if (AnsiPos(FpathDownload+'?file=', vHeader.Path) > 0) then
+  if (AnsiPos(FpathDownload+'?file=', vPrismRequest.Path) > 0) then
   begin
-   vPrismRequest:= TPrismHTTPRequest.Create;
-   vPrismRequest.Header:= vHeader;
    vPrismResponse:= TPrismHTTPResponse.Create;
 
    if not Assigned(AContext.Data) then
     AContext.Data:= TPrismWebSocketContext.Create;
    vPrismWSContext := TPrismWebSocketContext(AContext.Data);
 
-   vPrismWSContext.Token := vHeader.QueryParams.Values['token'];
-   vPrismWSContext.ChannelName := vHeader.QueryParams.Values['channelname'];
-   vPrismWSContext.PrismSessionUUID := vHeader.QueryParams.Values['prismsession'];
-   vPrismWSContext.FormUUID := vHeader.QueryParams.Values['FormUUID'];
+   vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+   vPrismWSContext.ChannelName := vPrismRequest.QueryParams.Values['channelname'];
+   vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+   vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['FormUUID'];
 
    DoDownloadData(AContext, vPrismRequest, vPrismResponse, vPrismWSContext);
 
@@ -693,20 +764,23 @@ begin
    begin
     vFileName:= ExtractFileName(vPrismResponse.FileName);
 
-    c.WriteLn('HTTP/1.1 ' + vPrismResponse.StatusCode);
+    c.WriteLn('HTTP/1.1 ' + HttpParseStatusCode(vPrismResponse.StatusCode));
     c.WriteLn('Content-Type: '+MimesType.GetMimeType(vFileName)+'; charset='+vPrismResponse.charset);
     c.WriteLn('Content-Disposition: attachment; filename="'+ExtractFileName(vFileName)+'"');
     c.WriteLn('Connection: Close');
     c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     c.WriteLn('');
 
     c.WriteFile(vPrismResponse.FileName);
    end;
 
-   FreeAndNil(vPrismRequest);
+   //FreeAndNil(vPrismRequest);
    FreeAndNil(vPrismResponse);
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -719,40 +793,41 @@ begin
    except
    end;
   end else
-  if (AnsiPos(FpathRESTServer+'/json/jqgrid/post', vHeader.Path) > 0) then
+  if (AnsiPos(FpathRESTServer+'/json/jqgrid/post', vPrismRequest.Path) > 0) then
   begin
-   vPrismRequest:= TPrismHTTPRequest.Create;
-   vPrismRequest.Header:= vHeader;
    vPrismResponse:= TPrismHTTPResponse.Create;
 
    if not Assigned(AContext.Data) then
     AContext.Data:= TPrismWebSocketContext.Create;
    vPrismWSContext := TPrismWebSocketContext(AContext.Data);
 
-   vPrismWSContext.Token := vHeader.QueryParams.Values['token'];
-   vPrismWSContext.ChannelName := vHeader.QueryParams.Values['channelname'];
-   vPrismWSContext.PrismSessionUUID := vHeader.QueryParams.Values['prismsession'];
-   vPrismWSContext.FormUUID := vHeader.QueryParams.Values['FormUUID'];
+   vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+   vPrismWSContext.ChannelName := vPrismRequest.QueryParams.Values['channelname'];
+   vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+   vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['FormUUID'];
 
    DoRESTData(AContext, vPrismRequest, vPrismResponse, vPrismWSContext);
 
    if (vPrismResponse.Content <> '') or
-      ((AnsiPos(FpathRESTServer+'/json/jqgrid/post', vHeader.Path) > 0) and (not vPrismResponse.Error)) then
+      ((AnsiPos(FpathRESTServer+'/json/jqgrid/post', vPrismRequest.Path) > 0) and (not vPrismResponse.Error)) then
    begin
-    c.WriteLn('HTTP/1.1 ' + vPrismResponse.StatusCode);
+    c.WriteLn('HTTP/1.1 ' + HttpParseStatusCode(vPrismResponse.StatusCode));
     c.WriteLn('Content-Type: '+vPrismResponse.ContentType+'; charset='+vPrismResponse.charset);
     c.WriteLn('Connection: Close');
     c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+     c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
     c.WriteLn('');
 
     if vPrismResponse.Content <> '' then
     C.Write(vPrismResponse.Content, IndyTextEncoding_UTF8);
    end;
 
-   FreeAndNil(vPrismRequest);
+   //FreeAndNil(vPrismRequest);
    FreeAndNil(vPrismResponse);
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -765,22 +840,23 @@ begin
    except
    end;
   end else
-  if (AnsiPos(URLAPIAuth, vHeader.Path) > 0) then  //Auth
+  if (AnsiPos(URLAPIAuth, vPrismRequest.Path) > 0) then  //Auth
   begin
    vProc:= TPrismSessionThreadProc.Create(nil,
     Exec_RouteAuth,
     TValue.From<TIdContext>(AContext),
-    TValue.From<TPrismHTTPHeader>(vHeader)
+    TValue.From<TPrismHTTPRequest>(vPrismRequest)
    );
 
    vIsProc:= true;
 
    vProc.Exec;
   end else
-  if vHeader.WebMethod in [wmtGET, wmtPOST, wmtHEAD] then
+  if vPrismRequest.WebMethod in [wmtGET, wmtPOST, wmtPUT, wmtDELETE, wmtPATCH] then
   begin
-   if (vHeader.Upgrade = 'websocket') and (vHeader.SecWebSocketKey <> '') and
-      ((AnsiPos(FpathWebSocket+'/connectionparams', vHeader.Path) > 0) or (AnsiPos(FpathWebSocket+'/connectionresponseparams', vHeader.Path) > 0)) and
+   if (vPrismRequest.WebMethod in [wmtGET, wmtPOST]) and
+      (vPrismRequest.Upgrade = 'websocket') and (vPrismRequest.SecWebSocketKey <> '') and
+      ((AnsiPos(FpathWebSocket+'/connectionparams', vPrismRequest.Path) > 0) or (AnsiPos(FpathWebSocket+'/connectionresponseparams', vPrismRequest.Path) > 0)) and
       ((not Assigned(AContext.Data)) or (Assigned(AContext.Data) and (AContext.Data is TPrismWebSocketContext) and (not vPrismWSContext.Established))) then
    begin
     {$REGION 'Handshaking WebSockets'}
@@ -790,16 +866,16 @@ begin
 
     if vPrismWSContext.Token = '' then
     begin
-     vPrismWSContext.Token := vHeader.QueryParams.Values['token'];
-     vPrismWSContext.ChannelName := vHeader.QueryParams.Values['channelname'];
-     vPrismWSContext.PrismSessionUUID := vHeader.QueryParams.Values['prismsession'];
-     vPrismWSContext.FormUUID := vHeader.QueryParams.Values['FormUUID'];
+     vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+     vPrismWSContext.ChannelName := vPrismRequest.QueryParams.Values['channelname'];
+     vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+     vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['FormUUID'];
      if not Assigned(vPrismWSContext.PrismSession) then
       vPrismWSContext.PrismSession:= PrismBaseClass.Sessions.Item[vPrismWSContext.PrismSessionUUID] as TPrismSession;
-     if (AnsiPos(FpathWebSocket+'/connectionparams', vHeader.Path) > 0) then
+     if (AnsiPos(FpathWebSocket+'/connectionparams', vPrismRequest.Path) > 0) then
      vPrismWSContext.ChannelName:= 'PrismSocketConnection'
      else
-     if (AnsiPos(FpathWebSocket+'/connectionresponseparams', vHeader.Path) > 0) then
+     if (AnsiPos(FpathWebSocket+'/connectionresponseparams', vPrismRequest.Path) > 0) then
      vPrismWSContext.ChannelName:= 'PrismSocketResponse';
 
      if Assigned(vPrismWSContext.PrismSession) then
@@ -808,7 +884,7 @@ begin
 
     if (vPrismWSContext.Token <> '') and (Assigned(vPrismWSContext.PrismSession)) and (vPrismWSContext.Token <> vPrismWSContext.PrismSession.Token) then
     begin
-     vHeader.Free;
+     vPrismRequest.Free;
 
      try
       if AContext.Connection <> nil then
@@ -830,7 +906,7 @@ begin
       vPrismWSContext.PrismSession:= PrismBaseClass.Sessions.Item[vPrismWSContext.PrismSessionUUID] as TPrismSession
      else
      begin
-      vHeader.Free;
+      vPrismRequest.Free;
 
       try
        if AContext.Connection <> nil then
@@ -850,15 +926,15 @@ begin
 
 
     //Screen Size
-    if vHeader.QueryParams.Values['viewportinfo'] <> '' then
+    if vPrismRequest.QueryParams.Values['viewportinfo'] <> '' then
     begin
      try
-      vPrismWSContext.PrismSession.InfoConnection.Screen.ProcessScreenInfo(vHeader.QueryParams.Values['viewportinfo']);
+      vPrismWSContext.PrismSession.InfoConnection.Screen.ProcessScreenInfo(vPrismRequest.QueryParams.Values['viewportinfo']);
      except
      end;
     end else
     begin
-     vHeader.Free;
+     vPrismRequest.Free;
 
      try
       if AContext.Connection <> nil then
@@ -873,7 +949,7 @@ begin
     end;
 
 
-    SecWebSocketKey := vHeader.SecWebSocketKey;
+    SecWebSocketKey := vPrismRequest.SecWebSocketKey;
 
     // Send handshake response
     idHashSHA1:= TIdHashSHA1.Create;
@@ -899,19 +975,19 @@ begin
 
     //result:= true;
 
-    vHeader.Free;
+    vPrismRequest.Free;
 
     {$ENDREGION}
    end else
    begin
-    if (vHeader.WebMethod in [wmtGET]) and
-       ((vHeader.Path = '/') or (vHeader.Path = '') or (Copy(vHeader.Path, 1,2) = '/?') or (vHeader.Path = VirtualPath)) then
+    if (vPrismRequest.WebMethod in [wmtGET]) and
+       ((vPrismRequest.Path = '/') or (vPrismRequest.Path = '') or (Copy(vPrismRequest.Path, 1,2) = '/?') or (vPrismRequest.Path = '/')) then //VirtualPath
     begin
      {$REGION 'Open Form'}
 //     vProc:= TPrismSessionThreadProc.Create(nil,
 //      Exec_OpenForm,
 //      TValue.From<TIdContext>(AContext),
-//      TValue.From<TPrismHTTPHeader>(vHeader),
+//      TValue.From<TPrismHTTPRequest>(vPrismRequest),
 //      TValue.From<TPrismWebSocketContext>(vPrismWSContext)
 //     );
 //
@@ -922,7 +998,7 @@ begin
 //     vProc:= TPrismSessionThreadProc.Create(nil,
 //      Exec_OpenForm,
 //      TValue.From<TIdContext>(AContext),
-//      TValue.From<TPrismHTTPHeader>(vHeader),
+//      TValue.From<TPrismHTTPRequest>(vPrismRequest),
 //      TValue.From<TPrismWebSocketContext>(vPrismWSContext),
 //      true,
 //      true
@@ -932,14 +1008,130 @@ begin
 //
 //     vProc.Exec;
 
-      Exec_OpenForm(AContext, vHeader, vPrismWSContext);
+      Exec_OpenForm(AContext, vPrismRequest, vPrismWSContext);
      {$ENDREGION }
     end else
-    if (vHeader.WebMethod in [wmtGET]) then
+    if Assigned(vPrismRequest.Route) and
+       ((vPrismRequest.Route as TD2BridgeRestRoute).RequireJWT) and (not vPrismRequest.JWTvalid) then //Route not Authenticated
+    begin
+     c.WriteLn('HTTP/1.1 403 Forbidden');
+     c.WriteLn('Content-Type: application/json; charset=UTF-8');
+     c.WriteLn('Content-Length: 98');
+     c.WriteLn('Connection: Close');
+     c.WriteLn('Server: '+fServerName);
+     c.WriteLn('');
+     c.WriteLn('{"error":"forbidden","error_description":"You are not authorized to access this endpoint."}');
+
+     //vPrismResponse.Free;
+     vPrismRequest.Free;
+
+     try
+      if AContext.Connection <> nil then
+       if AContext.Connection.Connected then
+       begin
+        AContext.Connection.IOHandler.Close;
+        AContext.Connection.IOHandler.Free;
+        AContext.Connection.Disconnect;
+       end;
+     except
+     end;
+    end else
+    if PrismBaseClass.Rest.Options.EnableRESTServerExternal and Assigned(vPrismRequest.Route) then //Route //EndPoint
+    begin
+     vPrismResponse:= TPrismHTTPResponse.Create;
+     vPrismResponse.ContentType:= vPrismRequest.ContentType;
+
+
+     try
+      try
+       PrismBaseClass.Sessions.AddThreadhID(TThread.CurrentThread.ThreadID, nil);
+       (vPrismRequest.Route as TD2BridgeRestRoute).DoCallBack(vPrismRequest, vPrismResponse);
+       PrismBaseClass.Sessions.RemoveThreadID(TThread.CurrentThread.ThreadID);
+      except
+      end;
+
+      if (vPrismResponse.FileName = '') and (vPrismResponse.Content = '')  and (vPrismResponse.Redirect = '') and (not vPrismResponse.InitializedJSON) then
+      begin
+       if (vPrismResponse.StatusCode = '200') then
+       begin
+        vPrismResponse.StatusCode:= '422';
+        vPrismResponse.ContentType:= 'application/json';
+       end else
+       if (vPrismResponse.StatusCode = '404') then
+       begin
+        vPrismResponse.ContentType:= 'application/json';
+       end;
+      end;
+
+
+      c.WriteLn('HTTP/1.1 ' + ifThen(vPrismResponse.StatusMessage <> '', vPrismResponse.StatusMessage, HttpParseStatusCode(vPrismResponse.StatusCode)));
+      if vPrismResponse.ContentType <> '' then
+      c.WriteLn('Content-Type: '+vPrismResponse.ContentType+'; charset='+vPrismResponse.charset);
+      for i:= 0 to pred(vPrismResponse.Headers.Count) do
+       if vPrismResponse.Headers[i] <> '' then
+        c.WriteLn(vPrismResponse.Headers[i]);
+      if vPrismResponse.FileName <> '' then
+       c.WriteLn('Content-Disposition: attachment; filename="'+ExtractFileName(vFileName)+'"');
+      if vPrismResponse.Redirect <> '' then
+      begin
+       c.WriteLn('Location: '+vPrismResponse.Redirect);
+       c.WriteLn('Content-Type: '+MimesType.GetMimeType(vPrismResponse.Redirect));
+      end;
+      c.WriteLn('Connection: Close');
+      c.WriteLn('Server: '+fServerName);
+      c.WriteLn('');
+
+      if VarToStr(vPrismResponse.StatusCode) <> '204' then
+      begin
+       if vPrismResponse.Content <> '' then
+       begin
+        C.Write(vPrismResponse.Content, IndyTextEncoding_UTF8)
+       end else
+        if vPrismResponse.InitializedJSON then
+        begin
+         if vPrismResponse.IsJSONArray then
+          C.Write(vPrismResponse.JSON.GetValue('jsonarray').ToJSON, IndyTextEncoding_UTF8)
+         else
+          C.Write(vPrismResponse.JSON.ToJSON, IndyTextEncoding_UTF8)
+        end else
+         if vPrismResponse.FileName <> '' then
+         begin
+          vFileName:= vPrismResponse.FileName;
+
+          if FileExists(vFileName) then
+           c.WriteFile(vPrismResponse.FileName);
+         end else
+         begin
+          if vPrismResponse.StatusCode = '422' then
+           c.WriteLn('{"error":"unprocessable_entity","error_description":"The request could not be processed due to semantic errors."}')
+          else
+           if vPrismResponse.StatusCode = '404' then
+            c.WriteLn('{"error":"not_found","error_description":"The requested resource was not found."}');
+         end;
+      end;
+     except
+     end;
+
+     //vPrismRequest.Free;
+     vPrismResponse.Free;
+     vPrismRequest.Free;
+
+     try
+      if AContext.Connection <> nil then
+       if AContext.Connection.Connected then
+       begin
+        AContext.Connection.IOHandler.Close;
+        AContext.Connection.IOHandler.Free;
+        AContext.Connection.Disconnect;
+       end;
+     except
+     end;
+    end else
+    if (vPrismRequest.WebMethod in [wmtGET]) then
     begin
      {$REGION 'Open File'}
      try
-      vFileName:= StringReplace(RootDirectory + StringReplace(vHeader.Path,'/',PathDelim, [rfReplaceAll]), PathDelim + PathDelim, PathDelim, [rfReplaceAll]);
+      vFileName:= StringReplace(RootDirectory + StringReplace(vPrismRequest.Path,'/',PathDelim, [rfReplaceAll]), PathDelim + PathDelim, PathDelim, [rfReplaceAll]);
       RemoveEscapeFromFileURL(vFileName);
       vFileName:= URLDecode(vFileName);
       if AnsiPos('?', vFileName) > 0 then
@@ -947,8 +1139,6 @@ begin
 
       if (not FileExists(vFileName)) or (vFileName = 'error500.html') then
       begin
-       vPrismRequest:= TPrismHTTPRequest.Create;
-       vPrismRequest.Header:= vHeader;
        vPrismResponse:= TPrismHTTPResponse.Create;
        if not Assigned(vPrismWSContext) then
         vPrismWSContext:= TPrismWebSocketContext.Create;
@@ -959,22 +1149,28 @@ begin
 
         if (vResponseFileName <> '') and FileExists(vResponseFileName) then
         begin
-         c.WriteLn('HTTP/1.1 ' + vPrismResponse.StatusCode);
+         c.WriteLn('HTTP/1.1 ' + HttpParseStatusCode(vPrismResponse.StatusCode));
          if MimesType.GetMimeType(vFileName) <> '' then
           c.WriteLn('Content-Type: '+vMimeType+'; charset='+vPrismResponse.charset);
          c.WriteLn('Connection: Close');
          c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+          c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
          c.WriteLn('');
 
          c.WriteFile(vResponseFileName);
         end else
         if (vResponseFileContent <> '') then
         begin
-         c.WriteLn('HTTP/1.1 ' + vPrismResponse.StatusCode);
+         c.WriteLn('HTTP/1.1 ' + HttpParseStatusCode(vPrismResponse.StatusCode));
          if MimesType.GetMimeType(vFileName) <> '' then
           c.WriteLn('Content-Type: '+MimesType.GetMimeType(vFileName)+'; charset='+vPrismResponse.charset);
          c.WriteLn('Connection: Close');
          c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+          c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
          c.WriteLn('');
 
          c.Write(vResponseFileContent, IndyTextEncoding_UTF8);
@@ -987,12 +1183,18 @@ begin
          if MimesType.GetMimeType(vResponseRedirect) <> '' then
           c.WriteLn('Content-Type: '+MimesType.GetMimeType(vResponseRedirect)+'; charset='+vPrismResponse.charset);
          c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+          c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
          c.WriteLn('');
         end else
         begin
          c.WriteLn('HTTP/1.1 404 Not Found');
          c.WriteLn('Connection: Close');
          c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+          c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
          c.WriteLn('');
 
          //PrismBaseClass.Log('', 'PrismServerTCP', 'GetFile', 'DoExecute', 'File not Found: '+vFileName);
@@ -1004,7 +1206,7 @@ begin
        if Assigned(vPrismWSContext) then
         FreeAndNil(vPrismWSContext);
 
-       vHeader.Free;
+       vPrismRequest.Free;
       end else
       begin
        c.WriteLn('HTTP/1.1 200 OK');
@@ -1012,11 +1214,35 @@ begin
         c.WriteLn('Content-Type: '+MimesType.GetMimeType(vFileName)+'; charset=UTF-8');
        c.WriteLn('Connection: Close');
        c.WriteLn('Server: '+fServerName);
+{$IFDEF D2DOCKER}
+        c.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
        c.WriteLn('');
 
-       c.WriteFile(vFileName);
 
-       vHeader.Free;
+       if SameText(vPrismRequest.Query('prismparse'), 'true') then
+       begin
+        vPrismResponse:= TPrismHTTPResponse.Create;
+
+        if not Assigned(AContext.Data) then
+         AContext.Data:= TPrismWebSocketContext.Create;
+        vPrismWSContext := TPrismWebSocketContext(AContext.Data);
+
+        vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+        vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['uuid'];
+        vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['formuuid'];
+
+        DoParseFile(vFileName, AContext, vPrismRequest, vPrismResponse, vPrismWSContext);
+
+        if (vPrismResponse.Content <> '') and (not vPrismResponse.Error) then
+         C.Write(vPrismResponse.Content, IndyTextEncoding_UTF8);
+
+        FreeAndNil(vPrismResponse);
+       end else
+        c.WriteFile(vFileName);
+
+
+       vPrismRequest.Free;
       end;
      except
      end;
@@ -1041,7 +1267,7 @@ begin
       c.WriteLn('Server: '+fServerName);
       c.WriteLn('');
 
-      vHeader.Free;
+      vPrismRequest.Free;
 
       if AContext.Connection <> nil then
        if AContext.Connection.Connected then
@@ -1052,15 +1278,15 @@ begin
        end;
      except
       result:= false;
-     end;
+   end;
 
     end;
    end;
   end else
   begin
-   //PUT, ...
+   //OTHERS
 
-   vHeader.Free;
+   vPrismRequest.Free;
 
    try
     if AContext.Connection <> nil then
@@ -1075,7 +1301,7 @@ begin
   end;
 
 
-  //vHeader.DisposeOf;
+  //vPrismRequest.DisposeOf;
  end;
 
 
@@ -1114,6 +1340,14 @@ procedure TPrismServerTCP.DoGetHTML(AContext: TIdContext; APrismRequest: TPrismH
 begin
  if Assigned(FOnGetHTML) then
   FOnGetHTML(APrismRequest, APrismReponse, PrismWSContext);
+end;
+
+procedure TPrismServerTCP.DoParseFile(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest;
+  var APrismReponse: TPrismHTTPResponse;
+  var APrismWSContext: TPrismWebSocketContext);
+begin
+ if Assigned(FOnParseFile) then
+  FOnParseFile(AFileName, AContext, APrismRequest, APrismReponse, APrismWSContext);
 end;
 
 function TPrismServerTCP.DoReceiveMessage(AMessage: string; PrismWSContext: TPrismWebSocketContext): string;
@@ -1229,32 +1463,32 @@ begin
 end;
 
 {$IFDEF D2BRIDGE}
-procedure TPrismServerTCP.Exec_OpenForm(varContext, varHeader, varPrismWSContext: TValue);
+procedure TPrismServerTCP.Exec_OpenForm(varContext, varPrismHTTPRequest, varPrismWSContext: TValue);
 var
  xPrismRequest: TPrismHTTPRequest;
  xPrismResponse: TPrismHTTPResponse;
- xHeader: TPrismHTTPHeader;
  xPrismWSContext: TPrismWebSocketContext;
  xIOHandle: TIdIOHandler;
  xContext: TIdContext;
  xFileName: string;
  xResponseFileName, xResponseFileContent, xResponseRedirect, xMimeType: string;
  xPage429: string;
+ vAppBase: string;
 begin
  try
   xContext:= TIdContext(varContext.AsObject);
 
   try
-   xHeader:= TPrismHTTPHeader(varHeader.AsObject);
+   xPrismRequest:= TPrismHTTPRequest(varPrismHTTPRequest.AsObject);
 
    if (xContext.Connection = nil) or
       (not xContext.Connection.Connected) or
       (not Assigned(xContext.Connection.IOHandler)) or
       (not xContext.Connection.IOHandler.Connected) or
-      (xHeader = nil) or (not Assigned(xHeader)) then
+      (xPrismRequest = nil) or (not Assigned(xPrismRequest)) then
    begin
-    if Assigned(xHeader) then
-     FreeAndNil(xHeader);
+    if Assigned(xPrismRequest) then
+     FreeAndNil(xPrismRequest);
 
     exit;
    end;
@@ -1262,18 +1496,16 @@ begin
   end;
 
   xIOHandle:= xContext.Connection.IOHandler;
-  xPrismRequest:= TPrismHTTPRequest.Create;
-  xPrismRequest.Header:= xHeader;
   xPrismResponse:= TPrismHTTPResponse.Create;
   xPrismWSContext:= TPrismWebSocketContext.Create;
 
-  if (xHeader.Path = '/') or (xHeader.Path = '') or (Copy(xHeader.Path, 1,2) = '/?') or (xHeader.Path = VirtualPath) then
+  if (xPrismRequest.Path = '/') or (xPrismRequest.Path = '') or (Copy(xPrismRequest.Path, 1,2) = '/?') or (xPrismRequest.Path = '/') then //VirtualPath
   begin
    try
-    if xHeader.ReloadPage then
+    if xPrismRequest.ReloadPage then
     begin
-     xPrismWSContext.Token:= xHeader.Token;
-     xPrismWSContext.PrismSessionUUID:= xHeader.PrismSession;
+     xPrismWSContext.Token:= xPrismRequest.D2BridgeToken;
+     xPrismWSContext.PrismSessionUUID:= xPrismRequest.SessionUUID;
      xPrismWSContext.Reloading:= true;
     end;
 
@@ -1283,23 +1515,29 @@ begin
     end;
 
     if IdContextConnected(xContext) then
-     if not xPrismRequest.Header.TooManyConnFromIP then
+     if not xPrismRequest.TooManyConnFromIP then
      begin
-      xIOHandle.WriteLn('HTTP/1.1 ' + xPrismResponse.StatusCode);
+      xIOHandle.WriteLn('HTTP/1.1 ' + HttpParseStatusCode(xPrismResponse.StatusCode));
       xIOHandle.WriteLn('Content-Type: '+xPrismResponse.ContentType+'; charset='+xPrismResponse.charset);
       xIOHandle.WriteLn('Connection: Close');
       //     xIOHandle.WriteLn('Connection: Keep-Alive');
       //     xIOHandle.WriteLn('Keep-Alive: timeout='+IntToStr(Fhtmlconnectiontimeout)+', max='+IntToStr(Fhtmlconnectionmax));
       xIOHandle.WriteLn('Server: '+fServerName);
       //xIOHandle.WriteLn('Link: </error500.html>; rel=prefetch');
-      //if (AnsiPos('/reloadpage?token=', xHeader.Path) > 0) then
-      if xHeader.ReloadPage then
+      //if (AnsiPos('/reloadpage?token=', xPrismRequest.Path) > 0) then
+      if xPrismRequest.ReloadPage then
       begin
-       xIOHandle.WriteLn('Set-Cookie: D2Bridge_Token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path='+xHeader.PathWithoutParams);
-       xIOHandle.WriteLn('Set-Cookie: D2Bridge_PrismSession=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path='+xHeader.PathWithoutParams);
-       xIOHandle.WriteLn('Set-Cookie: D2Bridge_ReloadPage=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path='+xHeader.PathWithoutParams);
-       //DisconnectWebSocketMessage(xPrismWSContext.Token, xPrismWSContext.PrismSessionUUID);
+       vAppBase:= xPrismRequest.AppBase;
+       if not vAppBase.EndsWith('/') then
+        vAppBase:= vAppBase + '/';
+       xIOHandle.WriteLn('Set-Cookie: D2Bridge_Token=; Max-Age=0; path='+ vAppBase);
+       xIOHandle.WriteLn('Set-Cookie: D2Bridge_PrismSession=; Max-Age=0; path='+ vAppBase);
+       xIOHandle.WriteLn('Set-Cookie: D2Bridge_ReloadPage=; Max-Age=0; path='+ vAppBase);
+       xIOHandle.WriteLn('Set-Cookie: D2DockerInstance=; Max-Age=0; path='+ vAppBase);
       end;
+{$IFDEF D2DOCKER}
+       xIOHandle.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
       xIOHandle.WriteLn('');
 
       if xPrismResponse.Content <> '' then
@@ -1312,11 +1550,14 @@ begin
       end;
      end else
      begin
-      xPage429:= PrismBaseClass.PrismServerHTML.GetError429(xHeader.AcceptLanguage);
+      xPage429:= PrismBaseClass.PrismServerHTML.GetError429(xPrismRequest.AcceptLanguage);
       xIOHandle.WriteLn('HTTP/1.1 429 Too Many Requests');
       xIOHandle.WriteLn('Retry-After: 60'); // Tempo em segundos até tentar novamente
       xIOHandle.WriteLn('Content-Type: text/html; charset=UTF-8');
       //xIOHandle.WriteLn('Content-Length: ' + IntToStr(Length(xPage429)));
+{$IFDEF D2DOCKER}
+       xIOHandle.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
       xIOHandle.WriteLn('');
       xIOHandle.Write(xPage429, IndyTextEncoding_UTF8);
      end;
@@ -1333,8 +1574,8 @@ begin
     begin
      try
       xContext.Connection.IOHandler.Close;
-     except
-     end;
+  except
+  end;
      try
       xContext.Connection.IOHandler.Free;
      except
@@ -1348,11 +1589,11 @@ begin
   except
   end;
 
-  FreeAndNil(xPrismRequest);
+  //FreeAndNil(xPrismRequest);
   FreeAndNil(xPrismResponse);
   FreeAndNil(xPrismWSContext);
   FreeAndNil(xPrismRequest);
-  FreeAndNil(xHeader);
+  FreeAndNil(xPrismRequest);
  except
  end;
 end;
@@ -1376,11 +1617,11 @@ begin
  end;
 end;
 
-procedure TPrismServerTCP.Exec_RouteAuth(varContext, varHeader: TValue);
+procedure TPrismServerTCP.Exec_RouteAuth(varContext, varPrismHTTPRequest: TValue);
 var
  xIOHandle: TIdIOHandler;
  xContext: TIdContext;
- xHeader: TPrismHTTPHeader;
+ xPrismRequest: TPrismHTTPRequest;
  xContentLength: Integer;
  vPrismSession: TPrismSession;
 begin
@@ -1391,50 +1632,50 @@ begin
    Exit;
 
   xIOHandle:= xContext.Connection.IOHandler;
-  xHeader:= TPrismHTTPHeader(varHeader.AsObject);
+  xPrismRequest:= TPrismHTTPRequest(varPrismHTTPRequest.AsObject);
 
   //Process Auth
-  if (AnsiPos(URLAPIAuth + '/google', xHeader.Path) > 0) then
+  if (AnsiPos(URLAPIAuth + '/google', xPrismRequest.Path) > 0) then
   begin
    {$REGION 'Google'}
-    if xHeader.QueryParams.Values['state'] <> '' then
+    if xPrismRequest.QueryParams.Values['state'] <> '' then
     begin
-      vPrismSession:= PrismBaseClass.Sessions.FromPushID(xHeader.QueryParams.Values['state']) as TPrismSession;
+      vPrismSession:= PrismBaseClass.Sessions.FromPushID(xPrismRequest.QueryParams.Values['state']) as TPrismSession;
 
       if Assigned(vPrismSession) then
       begin
         vPrismSession.UnLock(APIAuthLockName);
-        vPrismSession.URI.QueryParams.Update(xHeader.QueryParams);
+        vPrismSession.URI.QueryParams.Update(xPrismRequest.QueryParams);
       end;
     end;
   {$ENDREGION}
   end else
-  if (AnsiPos(URLAPIAuth + '/apple', xHeader.Path) > 0) then
+  if (AnsiPos(URLAPIAuth + '/apple', xPrismRequest.Path) > 0) then
   begin
    {$REGION 'Apple'}
 
    //Checar se PrismSession é valido
 
-    if xHeader.WebMethod = wmtPOST then
+    if xPrismRequest.WebMethod = wmtPOST then
     begin
-      if TryStrToInt(xHeader.ContentLength, xContentLength) then
+      if TryStrToInt(xPrismRequest.ContentLength, xContentLength) then
       begin
        //var MyBodyResponse: string := ReadBodyStringFromData(xIOHandle, xContentLength);
       end;
     end;
    {$ENDREGION}
   end;
-  if (AnsiPos(URLAPIAuth + '/microsoft', xHeader.Path) > 0) then
+  if (AnsiPos(URLAPIAuth + '/microsoft', xPrismRequest.Path) > 0) then
   begin
    {$REGION 'Azure'}
-    if xHeader.QueryParams.Values['state'] <> '' then
+    if xPrismRequest.QueryParams.Values['state'] <> '' then
     begin
-     vPrismSession:= PrismBaseClass.Sessions.FromPushID(xHeader.QueryParams.Values['state']) as TPrismSession;
+     vPrismSession:= PrismBaseClass.Sessions.FromPushID(xPrismRequest.QueryParams.Values['state']) as TPrismSession;
 
      if Assigned(vPrismSession) then
      begin
       vPrismSession.UnLock(APIAuthLockName);
-      vPrismSession.URI.QueryParams.Update(xHeader.QueryParams);
+      vPrismSession.URI.QueryParams.Update(xPrismRequest.QueryParams);
      end;
     end;
 
@@ -1446,6 +1687,9 @@ begin
    xIOHandle.WriteLn('Content-Type: text/html; charset=UTF-8');
    xIOHandle.WriteLn('Connection: Close');
    xIOHandle.WriteLn('Server: ' + fServerName);
+{$IFDEF D2DOCKER}
+    xIOHandle.WriteLn('D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
    xIOHandle.WriteLn('');
 
    xIOHandle.WriteLn('<html>');
@@ -1472,7 +1716,7 @@ begin
  end;
 
  try
-  FreeAndNil(xHeader);
+  FreeAndNil(xPrismRequest);
  except
  end;
 end;
@@ -1554,6 +1798,11 @@ begin
  end;
 end;
 
+
+function TPrismServerTCP.GetAppBase: string;
+begin
+ result:= FAppBase;
+end;
 
 
 procedure TPrismServerTCP.InitSSL(
@@ -1673,7 +1922,7 @@ begin
  result:= IdServerIOHandlerSSLOpenSSL;
 end;
 
-function TPrismServerTCP.ParseHeaders(AContext: TIdContext; const AHTMLHeader: string): TPrismHTTPHeader;
+function TPrismServerTCP.ParseHeaders(AContext: TIdContext; const AHTMLHeader: string): TPrismHTTPRequest;
 var
  lines: TArray<string>;
  line: string;
@@ -1686,8 +1935,17 @@ var
  vExistBoundary: boolean;
  I: integer;
  vContentLength: Integer;
+ vEncoded, vDecoded: string;
+ vPayLoad: TJSONObject;
+ vIp: string;
 begin
- result := TPrismHTTPHeader.Create;
+ result := TPrismHTTPRequest.Create;
+
+ try
+  if Assigned(AContext) then
+   result.IOHandler:= AContext.Connection.IOHandler;
+ except
+ end;
 
  //GetRemoteIP
  if Assigned(AContext) then
@@ -1714,19 +1972,42 @@ begin
    if SameText(Trim(SplittedLine[0]), 'connection') then result.Connection:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'upgrade') then result.Upgrade:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'Sec-WebSocket-Key') then result.SecWebSocketKey:= Trim(SplittedLine[1]);
+   if SameText(Trim(SplittedLine[0]), 'Accept') then result.Accept:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'Accept-Encoding') then result.AcceptEncoding:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'Accept-Language') then result.AcceptLanguage:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'Content-Length') then result.ContentLength:= Trim(SplittedLine[1]);
    if SameText(Trim(SplittedLine[0]), 'Purpose') then result.Purpose:= Trim(SplittedLine[1]);
-   if SameText(Trim(SplittedLine[0]), 'x-real-ip') then result.ForwardedIP:= Trim(SplittedLine[1]);
-   if SameText(Trim(SplittedLine[0]), 'x-forwarded-for') then result.ForwardedIP:= Trim(SplittedLine[1]);
+   if SameText(Trim(SplittedLine[0]), 'x-real-ip') then
+   begin
+    result.ForwardedIP:= Trim(SplittedLine[1]);
+
+    if (result.RemoteIP = '127.0.0.1') or (result.RemoteIP = 'localhost') then
+     result.RemoteIP:= result.ForwardedIP;
+   end else
+   if SameText(Trim(SplittedLine[0]), 'App-Base') then
+   begin
+    result.AppBase:= Trim(SplittedLine[1]);
+
+    AppBase:= result.AppBase;
+   end else
+   if SameText(Trim(SplittedLine[0]), 'X-App-Base') then
+   begin
+    result.AppBase:= Trim(SplittedLine[1]);
+
+    AppBase:= result.AppBase;
+   end else
+   if SameText(Trim(SplittedLine[0]), 'x-forwarded-for') then
+   begin
+    vIp:= Trim(SplittedLine[1]);
+
+    result.ForwardedIP:= vIP.Split([','])[0];// Trim(SplittedLine[1]);
+   end else
    if SameText(Trim(SplittedLine[0]), 'referer') then
    begin
     result.Referer:= Trim(SplittedLine[1]);
-
     if AnsiPos(':', Trim(result.Referer)) > 0 then
     begin
-     if AnsiPos('https://', Trim(result.Referer)) = 1 then
+     if AnsiPos(AnsiUpperCase('https://'), AnsiUpperCase(Trim(result.Referer))) = 1 then
      begin
       result.Protocol:= 'https';
 
@@ -1743,7 +2024,7 @@ begin
        vPortString:= '443';
       end;
      end else
-     if AnsiPos('http://', Trim(result.Referer)) = 1 then
+     if AnsiPos(AnsiUpperCase('http://'), AnsiUpperCase(Trim(result.Referer))) = 1 then
      begin
 
      end;
@@ -1760,7 +2041,7 @@ begin
    end else
    if SameText(Trim(SplittedLine[0]), 'X-Forwarded-Scheme') then
    begin
-    if Pos(Trim(SplittedLine[1]),'https') > 0 then
+    if Pos(AnsiUpperCase(Trim(SplittedLine[1])), AnsiUpperCase('https')) > 0 then
     begin
       vPortString:= '443';
       Result.Protocol:= 'https';
@@ -1822,10 +2103,10 @@ begin
      begin
       vCookieParts.DelimitedText := vCookiePair;
       if vCookieParts[0] = 'D2Bridge_Token' then
-      result.Token:= vCookieParts[1]
+      result.D2BridgeToken:= vCookieParts[1]
       else
       if vCookieParts[0] = 'D2Bridge_PrismSession' then
-      result.PrismSession:= vCookieParts[1]
+      result.SessionUUID:= vCookieParts[1]
       else
       if vCookieParts[0] = 'D2Bridge_ServerUUID' then
       result.ServerUUID:= vCookieParts[1]
@@ -1842,21 +2123,92 @@ begin
    begin
     result.FileName:= copy(Trim(SplittedLine[1]), AnsiPos('filename="', Trim(SplittedLine[1]))+10);
     result.FileName:= copy(result.FileName, 1, AnsiPos('"',result.FileName));
+   end else
+   if SameText(Trim(SplittedLine[0]), 'Authorization') then
+   begin
+    Result.Authorization:= Trim(SplittedLine[1]);
+
+    if Pos(UpperCase('basic '), UpperCase(Trim(SplittedLine[1]))) = 1 then
+    begin
+     result.AuthorizationType:= 'Basic';
+
+     vEncoded := Copy(SplittedLine[1], 7, MaxInt);
+     vEncoded := Trim(vEncoded);
+
+     // Decodifica Base64
+     {$IFDEF FPC}
+     vDecoded := DecodeStringBase64(vEncoded);
+     {$ELSE}
+     vDecoded := TNetEncoding.Base64.Decode(vEncoded);
+     {$ENDIF}
+
+     // Divide no separador ':'
+     I := Pos(':', vDecoded);
+     if I > 0 then
+     begin
+      Result.User := Copy(vDecoded, 1, I - 1);
+      Result.Password := Copy(vDecoded, I + 1);
+     end;
+    end else
+    if Pos(UpperCase('bearer '), UpperCase(Trim(SplittedLine[1]))) = 1 then
+    begin
+     result.AuthorizationType:= 'Bearer';
+
+     result.JWTtoken:= Copy(SplittedLine[1], 8, MaxInt);
+
+     if Pos(Uppercase('"token_type":"refresh"'),
+        Uppercase(PrismBaseClass.Options.Security.Rest.JWTAccess.Payload(result.JWTtoken))) > 0 then
+     begin
+      result.JWTvalid:= PrismBaseClass.Options.Security.Rest.JWTRefresh.Valid(result.JWTtoken);
+      result.JWTPayLoad:= PrismBaseClass.Options.Security.Rest.JWTRefresh.Payload(result.JWTtoken);
+      result.JWTTokenType:= TSecurityJWTTokenType.JWTTokenRefresh;
+     end else
+     begin
+      result.JWTvalid:= PrismBaseClass.Options.Security.Rest.JWTAccess.Valid(result.JWTtoken);
+      result.JWTPayLoad:= PrismBaseClass.Options.Security.Rest.JWTAccess.Payload(result.JWTtoken);
+     end;
+
+     if result.JWTPayLoad <> '' then
+     begin
+      try
+       vPayLoad:= TJSONObject.ParseJSONValue(result.JWTPayLoad) as TJSONObject;
+       result.JWTsub:= vPayLoad.GetValue('sub', '');
+       result.JWTidentity:= {$IFDEF FPC}DecodeStringBase64{$ELSE}TNetEncoding.Base64.Decode{$ENDIF}(vPayLoad.GetValue('identity', ''));
+       vPayLoad.Free;
+      except
+      end;
+     end;
+    end;
    end;
 
    //result.AddOrSetValue(Trim(SplittedLine[0]), Trim(SplittedLine[1]));
   end else
   begin
-   if (AnsiPos('GET /', line) > 0) or (AnsiPos('POST /', line) > 0) or (AnsiPos('HEAD /', line) > 0) then
+   if (AnsiPos('GET /', AnsiUpperCase(line)) > 0) or
+      (AnsiPos('POST /', AnsiUpperCase(line)) > 0) or
+      (AnsiPos('HEAD /', AnsiUpperCase(line)) > 0) or
+      (AnsiPos('PUT /', AnsiUpperCase(line)) > 0) or
+      (AnsiPos('DELETE /', AnsiUpperCase(line)) > 0) or
+      (AnsiPos('PATCH /', AnsiUpperCase(line)) > 0) then
    begin
-    if (AnsiPos('GET /', line) > 0) then
-    result.WebMethod:= wmtGET
+    if (AnsiPos('GET /', AnsiUpperCase(line)) > 0) then
+     result.WebMethod:= wmtGET
     else
-    if (AnsiPos('POST /', line) > 0) then
-    result.WebMethod:= wmtPOST
+    if (AnsiPos('POST /', AnsiUpperCase(line)) > 0) then
+     result.WebMethod:= wmtPOST
     else
-    if (AnsiPos('HEAD /', line) > 0) then
-    result.WebMethod:= wmtHEAD;
+    if (AnsiPos('HEAD /', AnsiUpperCase(line)) > 0) then
+     result.WebMethod:= wmtHEAD
+    else
+    if (AnsiPos('PUT /', AnsiUpperCase(line)) > 0) then
+     result.WebMethod:= wmtPUT
+    else
+    if (AnsiPos('DELETE /', AnsiUpperCase(line)) > 0) then
+     result.WebMethod:= wmtDELETE
+    else
+    if (AnsiPos('PATCH /', AnsiUpperCase(line)) > 0) then
+    result.WebMethod:= wmtPATCH;
+
 
     Result.Path:= Copy(line, AnsiPos(' /', line) + 1, AnsiPos(' ', Copy(line, AnsiPos(' /', line) + 1)) -1);
 
@@ -1896,13 +2248,25 @@ begin
   {$ENDREGION}
  end;
 
- //Pos Process
- if (AnsiPos(FpathRESTServer+'/json/jqgrid/post', Result.Path) > 0) and
-    TryStrToInt(Result.ContentLength, vContentLength) then
- begin
-  Result.Content:= AContext.Connection.IOHandler.ReadString(vContentLength, IndyTextEncoding_UTF8);
- end;
 
+ if not (Result.IPListedInBlackList and Result.UserAgentBlocked) then
+ begin
+  //Pos Process
+  if (AnsiPos(FpathRESTServer+'/json/jqgrid/post', Result.Path) > 0) and
+     TryStrToInt(Result.ContentLength, vContentLength) then
+  begin
+   Result.Content:= AContext.Connection.IOHandler.ReadString(vContentLength, IndyTextEncoding_UTF8);
+  end;
+
+  //Check Routes
+  if (result.Path <> '/') and (result.Path <> '') and (result.Path <> '/') then //VirtualPath
+  begin
+   if (result.WebMethod in [wmtGET, wmtPOST, wmtPUT, wmtDELETE, wmtPATCH]) then
+   begin
+    result.Route:= PrismBaseClass.Rest.Routes.Item[result.WebMethod, result.PathWithoutParams] as TObject;
+   end;
+  end;
+ end;
 end;
 
 function TPrismServerTCP.ReadBodyStringFromData(IOHandler: TIdIOHandler; ContentLength: Integer): string;
@@ -1919,8 +2283,7 @@ begin
  end;
 end;
 
-function TPrismServerTCP.ReadBodyStreamFromData(IOHandler: TIdIOHandler;
-  ContentLength: Integer): TMemoryStream;
+function TPrismServerTCP.ReadBodyStreamFromData(IOHandler: TIdIOHandler; ContentLength: Integer): TMemoryStream;
 var
  vBodyContent: TBytes;
  vArrayLines: TArray<string>;
@@ -2063,6 +2426,20 @@ begin
  end;
 end;
 
+
+procedure TPrismServerTCP.SetAppBase(const Value: string);
+begin
+ if FAppBase = '/' then
+ begin
+  FAppBase:= Value;
+
+  if FAppBase.EndsWith('/') then
+   FAppBase:= Copy(FAppBase, 1, Length(FAppBase) - 1);
+
+  if not FAppBase.StartsWith('/') then
+   FAppBase:= '/' + FAppBase;
+ end;
+end;
 
 { TWebSocketIOHandlerHelper }
 
@@ -2237,4 +2614,3 @@ begin
 end;
 
 end.
-

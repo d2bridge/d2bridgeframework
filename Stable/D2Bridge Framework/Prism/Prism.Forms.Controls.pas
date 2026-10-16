@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -37,9 +43,6 @@ uses
   FMX.Graphics,
 {$ELSE}
   Graphics,
-{$ENDIF}
-{$IFDEF MSWINDOWS}
-  Windows,
 {$ENDIF}
   Prism.Interfaces, Prism.Types,
   D2Bridge.Prism, D2Bridge.Lang.Interfaces, D2Bridge.Lang.Term, D2Bridge.Interfaces;
@@ -104,8 +107,8 @@ type
    FStoredVisible: Boolean;
    FNewVisible: Boolean;
    FStoredReadOnly: Boolean;
-   FFStoredVCLStyle: ID2BridgeItemVCLObjStyle;
    FNewReadOnly: Boolean;
+   FFStoredVCLStyle: ID2BridgeItemVCLObjStyle;
    function RefreshControl: Boolean;
    procedure SetVCLComponent(AComponent: TComponent); virtual;
    function GetVCLComponent: TComponent; virtual;
@@ -172,6 +175,8 @@ type
    function AsWYSIWYGEditor: IPrismWYSIWYGEditor;
    function AsCamera: IPrismCamera;
    function AsQRCodeReader: IPrismQRCodeReader;
+   function AsBadge: IPrismBadge;
+   function AsChart: IPrismChartBase;
 
    //**IS** PrismControls
    function IsButton: Boolean; virtual;
@@ -214,6 +219,8 @@ type
    function IsWYSIWYGEditor: boolean; virtual;
    function IsCamera: boolean; virtual;
    function IsQRCodeReader: boolean; virtual;
+   function IsBadge: boolean; virtual;
+   function IsChart: boolean; virtual;
 
 
    function NeedCheckValidation: Boolean; virtual;
@@ -230,6 +237,7 @@ type
 
    //Abstract
    procedure Initialize; virtual;
+   procedure DoInitializeVCLStyle; virtual;
    function Initilized: boolean; virtual;
    function AlwaysInitialize: boolean; virtual;
    procedure ProcessHTML; virtual; abstract;
@@ -289,6 +297,11 @@ begin
  result:= false;
 end;
 
+function TPrismControl.AsBadge: IPrismBadge;
+begin
+ result:= self as IPrismBadge;
+end;
+
 function TPrismControl.AsButton: IPrismButton;
 begin
  result:= self as TPrismButton;
@@ -324,6 +337,11 @@ end;
 function TPrismControl.AsCarousel: IPrismCarousel;
 begin
  result:= self as TPrismCarousel;
+end;
+
+function TPrismControl.AsChart: IPrismChartBase;
+begin
+ result:= self as IPrismChartBase;
 end;
 
 function TPrismControl.AsCheckBox: IPrismCheckBox;
@@ -575,6 +593,21 @@ begin
 
 end;
 
+procedure TPrismControl.DoInitializeVCLStyle;
+begin
+ //VCL Style
+ if Assigned(D2BridgeItem) and Supports(D2BridgeItem, ID2BridgeItemVCLObj) then
+ begin
+  if Assigned((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle) then
+  begin
+   if not Assigned(FFStoredVCLStyle) then
+    FFStoredVCLStyle:= TD2BridgeItemVCLObjStyle.Create;
+
+   (FFStoredVCLStyle as TD2BridgeItemVCLObjStyle).Assign((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle as TPersistent);
+  end;
+ end;
+end;
+
 procedure TPrismControl.FormatHTMLControl(AHTMLText: String);
 var
  PosInit, PosEnd: Integer;
@@ -764,31 +797,14 @@ begin
   FStoredReadOnly:= ReadOnly;
   FStoredVisible:= Visible;
 
-  //VCL Style
-  if Assigned(D2BridgeItem) and Supports(D2BridgeItem, ID2BridgeItemVCLObj) then
-  begin
-   if Assigned((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle) then
-   begin
-    if not Assigned(FFStoredVCLStyle) then
-     FFStoredVCLStyle:= TD2BridgeItemVCLObjStyle.Create;
-
-    (FFStoredVCLStyle as TD2BridgeItemVCLObjStyle).Assign((D2BridgeItem as ID2BridgeItemVCLObj).VCLObjStyle as TPersistent);
-   end;
-  end;
+  DoInitializeVCLStyle;
  end;
 
  FStoredPlaceholder:= Placeholder;
 
  //Call Event
- try
-  if not FInitilized or AlwaysInitialize then
-   (Form as TPrismForm).DoInitPrismControl(self);
- except on E: Exception do
-{$IFDEF MSWINDOWS}
-   if IsDebuggerPresent then
-     raise Exception.Create(E.Message);
-{$ENDIF}
- end;
+ if not FInitilized or AlwaysInitialize then
+  (Form as TPrismForm).DoInitPrismControl(self);
 
  //FIgnoreValueInInitialized:= false;
  FInitilized:= true;
@@ -797,6 +813,11 @@ end;
 function TPrismControl.Initilized: boolean;
 begin
  result:= FInitilized;
+end;
+
+function TPrismControl.IsBadge: boolean;
+begin
+ result:= false;
 end;
 
 function TPrismControl.IsButton: Boolean;
@@ -825,6 +846,11 @@ begin
 end;
 
 function TPrismControl.IsCarousel: boolean;
+begin
+ result:= false;
+end;
+
+function TPrismControl.IsChart: boolean;
 begin
  result:= false;
 end;
@@ -1198,20 +1224,27 @@ begin
 
    if NewVisible then
    begin
-    //ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.remove("invisible");');
+    ScriptJS.Add('requestAnimationFrame(() => {');
+    ScriptJS.Add('setTimeout(() => {');
     ScriptJS.Add('let _displayincontrol'+AnsiUpperCase(NamePrefix)+' = ($("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).css("display") === "none");');
     ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).show();');
     ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).removeClass("invisible");');
     ScriptJS.Add('if (_displayincontrol'+AnsiUpperCase(NamePrefix)+' === true) {');
     ScriptJS.Add('  $("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).css("display", "");');
     ScriptJS.Add('}');
+    ScriptJS.Add('}, 0);');
+    ScriptJS.Add('});');
 
     FHTMLCore:= HTMLRemoveItemFromClass(FHTMLCore, 'invisible');
    end else
    begin
-    //ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("invisible");');
+    ScriptJS.Add('requestAnimationFrame(() => {');
+    ScriptJS.Add('setTimeout(() => {');
     ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).hide();');
     ScriptJS.Add('$("[id]").filter(function() {return this.id.toUpperCase() === "'+AnsiUpperCase(NamePrefix)+'";}).addClass("invisible");');
+    ScriptJS.Add('}, 0);');
+    ScriptJS.Add('});');
+
     FHTMLCore:= HTMLAddItemFromClass(FHTMLCore, 'invisible');
    end;
   end;
@@ -1276,6 +1309,9 @@ begin
    if NewVCLStyle.FontSize <> FFStoredVCLStyle.FontSize then
    begin
     vVCLStyleChanged := true;
+
+    FHTMLCore:= HTMLAddItemFromStyle(FHTMLCore, 'font-size', StringReplace(FloatToStr(NewVCLStyle.FontSize / DefaultFontSize), ',', '.', []) +'rem');
+
     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.font-size = "' + StringReplace(FloatToStr(NewVCLStyle.FontSize / DefaultFontSize), ',', '.', []) +'rem;');
    end;
 
@@ -1285,16 +1321,16 @@ begin
     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.remove("' + TCSSClassText.Style.bold + '", "' + TCSSClassText.Style.italic + '", "' + TCSSClassText.Style.Underline + '", "' + TCSSClassText.Style.StrikeOut + '");');
 
     if TFontStyle.fsBold in NewVCLStyle.FontStyles then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.bold + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.bold + '");');
 
     if TFontStyle.fsItalic in NewVCLStyle.FontStyles then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.italic + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.italic + '");');
 
     if TFontStyle.fsUnderline in NewVCLStyle.FontStyles then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.Underline + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.Underline + '");');
 
     if TFontStyle.fsStrikeOut in NewVCLStyle.FontStyles then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.StrikeOut + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Style.StrikeOut + '");');
    end;
 
    if NewVCLStyle.Alignment <> FFStoredVCLStyle.Alignment then
@@ -1303,22 +1339,29 @@ begin
     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.remove("' + TCSSClassText.Align.left + '", "' + TCSSClassText.Align.right + '", "' + TCSSClassText.Align.center + '");');
 
     if NewVCLStyle.Alignment = AlignmentLeft then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '");');
 
     if NewVCLStyle.Alignment = AlignmentRight then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '");');
 
     if NewVCLStyle.Alignment = AlignmentCenter then
-     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '"');
+     ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").classList.add("' + TCSSClassText.Align.left + '");');
    end;
 
    if NewVCLStyle.Color <> FFStoredVCLStyle.Color then
    begin
     vVCLStyleChanged := true;
     if NewVCLStyle.Color <> D2Bridge.Item.VCLObj.Style.ColorNone then
+    begin
+     FHTMLCore:= HTMLAddItemFromStyle(FHTMLCore, 'background-color', D2Bridge.Util.ColorToHex(NewVCLStyle.Color));
+
      ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.backgroundColor = "' + D2Bridge.Util.ColorToHex(NewVCLStyle.Color) + '";')
-    else
+    end else
+    begin
+     FHTMLCore:= HTMLRemoveItemFromStyle(FHTMLCore, 'background-color');
+
      ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").style.backgroundColor = "";')
+    end;
    end;
 
    if NewVCLStyle.FontColor <> FFStoredVCLStyle.FontColor then

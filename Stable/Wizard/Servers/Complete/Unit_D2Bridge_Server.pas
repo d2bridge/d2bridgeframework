@@ -115,6 +115,19 @@ begin
  D2BridgeServerController.Prism.Options.Security.UserAgent.Add('NewUserAgent'); //Block User Agent
  D2BridgeServerController.Prism.Options.Security.UserAgent.Delete('MyUserAgent'); //Allow User Agent
  }
+ 
+// * REST OPTIONS
+{
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTAccess.Secret:= 'My Secret';
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTAccess.ExpirationMinutes:= 30;
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTRefresh.Secret:= 'My Secret Refresh Token';
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTRefresh.ExpirationDays:= 30;
+ D2BridgeServerController.Prism.Rest.Options.MaxRecord:= 2000;
+ D2BridgeServerController.Prism.Rest.Options.ShowMetadata:= show;
+ D2BridgeServerController.Prism.Rest.Options.FieldNameLowerCase:= true;
+ D2BridgeServerController.Prism.Rest.Options.FormatSettings.ShortDateFormat:= 'YYYY-MM-DD';
+ D2BridgeServerController.Prism.Rest.Options.EnableRESTServerExternal:= true;
+}
 
  //seconds to Send Session to TimeOut and Destroy after Disconnected
  //D2BridgeServerController.Prism.Options.SessionTimeOut:= 300;

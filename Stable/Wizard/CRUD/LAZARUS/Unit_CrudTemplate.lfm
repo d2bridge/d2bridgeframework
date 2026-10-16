@@ -10,10 +10,10 @@ object Form_CrudTemplate: TForm_CrudTemplate
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
+  LCLVersion = '4.0.0.4'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  LCLVersion = '3.6.0.0'
   object Crud_PageControl: TPageControl
     Left = 0
     Height = 517

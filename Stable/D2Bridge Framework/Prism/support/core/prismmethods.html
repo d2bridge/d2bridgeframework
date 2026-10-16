@@ -526,49 +526,168 @@ document.addEventListener('click', function (e) {
 });
 
 
-function d2bridgeFixFormGroupVisibility() {
-    if (d2bridgeLoadedComplete) return;
+function d2bridgeFixVisibility() {
+  if (typeof d2bridgeLoadedComplete !== 'undefined' && d2bridgeLoadedComplete) return;
 
-    function updateFormGroupVisibility(element) {
-        var inputId = element.getAttribute('formgroupfor');
-        var formGroup = document.getElementById(inputId).closest('.d2bridgeformgroup');
-        var style = getComputedStyle(element);
+  // FORM GROUP ==========================================
+  function initFormGroupControl(element) {
+    updateFormGroupVisibility(element);
 
-        if (style.display === 'block' && !element.classList.contains('invisible') && formGroup.style.display !== 'none')
-          return;
-
-        // Se o input estiver visível, mostrar o formgroup, caso contrário, ocultá-lo
-        if (style.display !== 'none' && style.visibility !== 'hidden') {
-            formGroup.style.display = 'block';
-        } else {
-            formGroup.style.display = 'none';
+    const observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        if (['style', 'class', 'hidden'].includes(mutation.attributeName)) {
+          updateFormGroupVisibility(element);
         }
+      });
+    });
+
+    observer.observe(element, { attributes: true });
+  }
+
+  document.querySelectorAll('.d2bridgeformgroupcontrol').forEach(initFormGroupControl);
+
+
+  // BRIDGE DIV ==========================================
+  function initBridgeDiv(div) {
+    updateBridgeDivVisibility(div);
+
+    const observer = new MutationObserver(function () {
+      updateBridgeDivVisibility(div);
+    });
+
+    Array.from(div.children).forEach(child => {
+      observer.observe(child, {
+        attributes: true,
+        attributeFilter: ['style', 'class', 'hidden']
+      });
+    });
+  }
+
+  document.querySelectorAll('.d2bridgediv').forEach(initBridgeDiv);
+
+
+  // BUTTON SPACING ============================
+  function initButtonSpacingObserver(row) {
+    d2bridgeFixButtonSpacing(row);
+  }
+
+  document.querySelectorAll('.d2bridgerow').forEach(initButtonSpacingObserver);
+}
+
+
+function updateFormGroupVisibility(element) {
+  var inputId = element.getAttribute('formgroupfor');
+  var input = document.getElementById(inputId);
+  if (!input) return;
+
+  var formGroup = input.closest('.d2bridgeformgroup');
+  if (!formGroup) return;
+
+  let _elementIsVisible = false;    
+  var style = getComputedStyle(element);  
+  //if (style.display !== 'none' && style.visibility !== 'hidden' && !element.classList.contains('invisible')) {  
+  if (style.display !== 'none' && !element.classList.contains('invisible')) {
+    formGroup.style.display = 'block';
+    _elementIsVisible = true;
+    formGroup.classList.remove('d2bridgefixinvisible');
+  } else {
+    formGroup.style.display = 'none';
+    _elementIsVisible = false;
+    formGroup.classList.add('d2bridgefixinvisible');    
+  }
+
+
+  // Verifica o pai (.d2bridgerow) e aplica a classe se TODOS os filhos estiverem invisíveis
+  const parent = formGroup.parentElement;
+  if (parent && parent.classList.contains('d2bridgerow')) {
+    const allDivsInvisible = Array.from(parent.querySelectorAll(':scope > *')).every(child =>
+      child.classList.contains('d2bridgefixinvisible')
+    );
+
+    if (allDivsInvisible) {
+      parent.classList.add('d2bridgefixinvisible');
+    } else {
+      parent.classList.remove('d2bridgefixinvisible');
+    }
+  }
+
+}
+
+
+function updateBridgeDivVisibility(div) {
+
+  const hasVisibleChild = Array.from(div.children).some(el => {
+    const style = getComputedStyle(el);
+    return (
+      !el.hidden &&
+      style.display !== 'none' &&
+      /*style.visibility !== 'hidden' &&*/
+      !el.classList.contains('invisible')
+    );
+  });
+
+  if (!hasVisibleChild) {
+    div.classList.add('d2bridgefixinvisible');
+  } else {
+    div.classList.remove('d2bridgefixinvisible');
+  }
+
+  // Verifica o pai (.d2bridgerow) e aplica a classe se TODOS os filhos estiverem invisíveis
+  const parent = div.parentElement;
+  if (parent && parent.classList.contains('d2bridgerow')) {
+    const allDivsInvisible = Array.from(parent.querySelectorAll(':scope > *')).every(child =>
+      child.classList.contains('d2bridgefixinvisible')
+    );
+
+    if (allDivsInvisible) {
+      parent.classList.add('d2bridgefixinvisible');
+    } else {
+      parent.classList.remove('d2bridgefixinvisible');
     }
 
-    // Atribuir um observador de mutação a cada elemento com a classe d2bridgeformgroupcontrol
-    document.querySelectorAll('.d2bridgeformgroupcontrol').forEach(function(element) {
+    d2bridgeFixButtonSpacing(parent);
+  }
+}
 
-        var style = getComputedStyle(element);
-        var parent = element.parentNode;
-        var controlsInParent = parent.querySelectorAll('.d2bridgeformgroupcontrol');
 
-        if (controlsInParent.length > 0 && controlsInParent[0] === element) {
-            if (style.display === 'none' || style.visibility === 'hidden') {
-                updateFormGroupVisibility(element);
-            }
-        }
+function d2bridgeFixButtonSpacing(row) {
+  
+  const cols = Array.from(row.querySelectorAll(':scope > *'));
 
-        var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.attributeName === 'style' || mutation.attributeName === 'class') {
-                    updateFormGroupVisibility(element);
-                }
-            });
-        });
+  cols.forEach(col => col.classList.remove('d2bridgecol-button'));
 
-        observer.observe(element, { attributes: true });
+  let lastWasButton = false;
+
+  cols.forEach(col => {
+    const style = getComputedStyle(col);
+    const isColVisible =
+      style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      !col.hidden &&
+      !col.classList.contains('invisible');
+
+    if (!isColVisible) return;
+
+    const hasVisibleButton = Array.from(col.querySelectorAll('button')).some(btn => {
+      const bStyle = getComputedStyle(btn);
+      return (
+        !btn.hidden &&
+        bStyle.display !== 'none' &&
+        bStyle.visibility !== 'hidden' &&
+        !btn.classList.contains('invisible')
+      );
     });
-};
+
+    if (hasVisibleButton) {
+      if (lastWasButton) {
+        col.classList.add('d2bridgecol-button');
+      }
+      lastWasButton = true;
+    } else {
+      lastWasButton = false;
+    }
+  });
+}
 
 
 function d2bridgeFixPopupCloseButton() {
@@ -580,6 +699,19 @@ function d2bridgeFixPopupCloseButton() {
             event.preventDefault();
         });
     });
+}
+
+
+function d2bridgeFixAutoScroll() {
+  document.querySelectorAll('input, select, textarea, select').forEach(element => {
+    element.addEventListener('focus', () => {
+      if (window.innerWidth < 768) {      
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });        
+        }, 300);
+      }
+    });
+  });
 }
 
 
@@ -624,8 +756,9 @@ if (document.readyState === "loading") {
     window.addEventListener("load", d2bridgePrepareValidation);  
     document.addEventListener("DOMContentLoaded", d2bridgeappendPopups);
     document.addEventListener("DOMContentLoaded", d2bridgeFixD2bridgeformgroup);    
-    document.addEventListener("DOMContentLoaded", d2bridgeFixFormGroupVisibility);
+    document.addEventListener("DOMContentLoaded", d2bridgeFixVisibility);
     document.addEventListener("DOMContentLoaded", d2bridgeFixPopupCloseButton);    
+    document.addEventListener("DOMContentLoaded", d2bridgeFixAutoScroll);     
     window.addEventListener("load", d2bridgeAddIdleDetectEvent);        
     window.addEventListener("load", d2bridgeFinishEvent);            
 }

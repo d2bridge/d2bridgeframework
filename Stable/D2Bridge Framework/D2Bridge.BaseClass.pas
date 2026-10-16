@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -40,7 +46,8 @@ uses
 {$ENDIF}
   D2Bridge.Interfaces, D2Bridge.Types, D2Bridge.HTML, D2Bridge.HTML.CSS, D2Bridge.Render.HTMLType, D2Bridge.Util,
   D2Bridge.Lang.Interfaces, D2Bridge.Lang.Core, D2Bridge.Lang.Term, D2Bridge.Lang.APP.Term, D2Bridge.Lang.APP.Core,
-  D2Bridge.Render, Prism.Session, Prism.Types,
+  D2Bridge.Render, D2Bridge.Rest.Interfaces,
+  Prism.Session, Prism.Types,
   Prism.Interfaces, Prism.BaseClass.Sessions;
 
 type
@@ -123,6 +130,7 @@ type
   procedure RenderD2Bridge(Itens: TList<ID2BridgeItem>); overload;
   procedure RenderD2Bridge(Itens: TList<ID2BridgeItem>; HTMLBody: TStrings); overload;
   procedure RenderD2Bridge(AD2BridgeItem: ID2BridgeItem); overload;
+  procedure RenderD2Bridge(AD2BridgeItem: ID2BridgeItem; HTMLBody: TStrings); overload;
 
   function Prefix: String;
 
@@ -145,8 +153,11 @@ type
 
   function PrismControlToRegister: TList<IPrismControl>;
 
+  function Rest: ID2BridgeRest;
+
   function API: ID2BridgeAPI;
   function CSSClass: TCSSClass;
+  function APPConfig: ID2BridgeAPPConfig;
 
   function IsD2BridgeContext: Boolean;
 
@@ -231,6 +242,11 @@ end;
 function TD2BridgeClass.API: ID2BridgeAPI;
 begin
  result:= D2BridgeManager.API;
+end;
+
+function TD2BridgeClass.APPConfig: ID2BridgeAPPConfig;
+begin
+ result:= D2BridgeManager.ServerController.APPConfig;
 end;
 
 function TD2BridgeClass.Base64FromFile(AFile: string): string;
@@ -578,13 +594,26 @@ begin
   begin
    for I := 0 to Pred((FrameworkForm as TD2BridgePrismForm).Controls.Count) do
    begin
-    if (FrameworkForm as TD2BridgePrismForm).Controls[I].Form = (FrameworkForm as IPrismForm) then
-     if SameText((FrameworkForm as TD2BridgePrismForm).Controls[I].Name, AItemID) then
-     begin
-      Result:= (FrameworkForm as TD2BridgePrismForm).Controls.Items[I];
+    if Assigned((FrameworkForm as TD2BridgePrismForm).Controls[I].Form) then
+     if (FrameworkForm as TD2BridgePrismForm).Controls[I].Form = (FrameworkForm as IPrismForm) then
+      if SameText((FrameworkForm as TD2BridgePrismForm).Controls[I].Name, AItemID) then
+      begin
+       Result:= (FrameworkForm as TD2BridgePrismForm).Controls.Items[I];
 
+       break;
+      end;
+   end;
+
+   if not Assigned(result) then
+   begin
+    for I := 0 to Pred(FExportedControls.Keys.Count) do
+    begin
+     if SameText(FExportedControls.Keys.ToArray[I], AItemID) then
+     begin
+      result:= FExportedControls[FExportedControls.Keys.ToArray[I]].PrismControl;
       break;
      end;
+    end;
    end;
   end;
  except
@@ -697,6 +726,11 @@ begin
  FreeInterfaceList(TList<IInterface>(vItens));
 end;
 
+function TD2BridgeClass.Rest: ID2BridgeRest;
+begin
+ result:= D2BridgeManager.Prism.Rest;
+end;
+
 function TD2BridgeClass.Sessions: TPrismSessions;
 begin
  result:= D2BridgeManager.Prism.Sessions as TPrismSessions;
@@ -748,6 +782,27 @@ begin
  begin
   PrismSession.ExecJS('insertValidationFeedback("'+ AnsiUpperCase(vPrismControl.NamePrefix) +'", ' + BoolToStr(AIsValid, True).ToLower + ', "' + AMessage + '")');
  end;
+end;
+
+procedure TD2BridgeClass.RenderD2Bridge(AD2BridgeItem: ID2BridgeItem; HTMLBody: TStrings);
+var
+ vBegin, vEnd, I: integer;
+begin
+ vBegin:= TD2BridgeClass(BaseClass).HTML.Render.Body.Count;
+
+ RenderD2Bridge(AD2BridgeItem);
+
+ vEnd:= TD2BridgeClass(BaseClass).HTML.Render.Body.Count;
+
+ if vBegin < vEnd then
+ begin
+  for I := vBegin to Pred(vEnd) do
+   HTMLBody.Add(TD2BridgeClass(BaseClass).HTML.Render.Body.Strings[I]);
+
+  for I := Pred(vEnd) downto vBegin do
+   TD2BridgeClass(BaseClass).HTML.Render.Body.Delete(I)
+ end;
+
 end;
 
 { TD2BridgeClass.D2BridgeOptions }

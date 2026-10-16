@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -21,7 +27,7 @@
   God bless you
  +--------------------------------------------------------------------------+
   Thanks for contribution to this Unit to:
-   João B. S. Junior
+   Joao B. S. Junior
    Phone +55 69 99250-3445
    Email jr.playsoft@gmail.com
  +--------------------------------------------------------------------------+
@@ -97,8 +103,12 @@ begin
 end;
 
 destructor TD2BridgeAPIAuthMicrosoft.Destroy;
+var
+ vConfig: TD2BridgeAPIAuthMicrosoftConfig;
 begin
- (FConfig as TD2BridgeAPIAuthMicrosoftConfig).Destroy;
+ vConfig:= FConfig as TD2BridgeAPIAuthMicrosoftConfig;
+ FConfig:= nil;
+ vConfig.Free;
 
  inherited;
 end;
@@ -142,7 +152,7 @@ begin
     if vResponseStatusCode = 200 then
     begin
       PhotoStream.LoadFromStream(vResponseContent);
-      PhotoStream.Position := 0; // Reseta a posição do stream para leitura
+      PhotoStream.Position := 0; // Reseta a posiï¿½ï¿½o do stream para leitura
 
 {$IFNDEF FPC}
   {$IFDEF HAS_UNIT_SYSTEM_NETENCODING}
@@ -289,7 +299,7 @@ begin
        vResponseJSON.GetValue('id', ''),
        vResponseJSON.GetValue('displayName', ''),
        vResponseJSON.GetValue('mail', ''),
-       //'',//Microsoft não devolve foto em URL e sim em bytes vou tratar depois
+       //'',//Microsoft nï¿½o devolve foto em URL e sim em bytes vou tratar depois
        GetProfilePhotoAsBase64(VToken),
        vResponseJSON.GetValue('givenName', ''),
        vResponseJSON.GetValue('surname', ''),
@@ -297,7 +307,7 @@ begin
        vResponseJSON.GetValue('preferredLanguage', ''),
        vResponseJSON.GetValue('jobTitle', '')
       );
-      //'{"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#users/$entity","userPrincipalName":"juniorcsa@hotmail.com","id":"0e25e97482beb893","displayName":"João B S Junior","surname":"B S Junior","givenName":"João","preferredLanguage":"pt-BR","mail":"juniorcsa@hotmail.com","mobilePhone":null,"jobTitle":null,"officeLocation":null,"businessPhones":[]}'
+      //'{"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#users/$entity","userPrincipalName":"juniorcsa@hotmail.com","id":"0e25e97482beb893","displayName":"Joï¿½o B S Junior","surname":"B S Junior","givenName":"Joï¿½o","preferredLanguage":"pt-BR","mail":"juniorcsa@hotmail.com","mobilePhone":null,"jobTitle":null,"officeLocation":null,"businessPhones":[]}'
      finally
       vResponseJSON.Free;
      end;
@@ -322,4 +332,3 @@ end;
 
 
 end.
-

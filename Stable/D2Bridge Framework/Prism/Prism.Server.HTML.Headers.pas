@@ -1,19 +1,25 @@
-Ôªø{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -59,6 +65,7 @@ type
    procedure ProcessHTMLBodyIncludes(const Request: TPrismHTTPRequest; var HTMLText: string; Session: IPrismSession);
    Procedure LoadPageHTMLFromSession(const Request: TPrismHTTPRequest; Response: TPrismHTTPResponse; Session: TPrismSession);
    procedure ReloadPage(Session: TPrismSession);
+   function ProcessPrismParseFile(ASession: IPrismSession): string;
  end;
 
 
@@ -322,6 +329,9 @@ function TPrismServerHTMLHeaders.AddOnLoad(host: string; port: integer; urlpath:
 begin
  Result:= FCoreSetConnection;
 
+ if urlpath = '/' then
+  urlpath := '/appbasedefault';
+
  if PrismBaseClass.Options.SSL then
   Result:= StringReplace(Result, '{{protocol}}', 'wss', [rfIgnoreCase])
  else
@@ -332,6 +342,12 @@ begin
  Result:= StringReplace(Result, '{{Token}}', Session.Token, [rfReplaceAll, rfIgnoreCase]);
  Result:= StringReplace(Result, '{{UUID}}', Session.UUID, [rfReplaceAll, rfIgnoreCase]);
  Result:= StringReplace(Result, '{{ChannelName}}', 'PrismCallBack', [rfReplaceAll, rfIgnoreCase]);
+
+{$IFDEF D2DOCKER}
+ Result:= StringReplace(Result, '{{d2dockerinstance}}', D2BridgeManager.ServerController.D2DockerInstanceAlias, [rfReplaceAll, rfIgnoreCase]);
+{$ELSE}
+ Result:= StringReplace(Result, '{{d2dockerinstance}}', '0', [rfReplaceAll, rfIgnoreCase]);
+{$ENDIF}
 
 end;
 
@@ -454,6 +470,11 @@ begin
 
    end;
   end;
+
+
+  //processa $prismparse
+  HTMLText:= StringReplace(HTMLText, '$prismparse', ProcessPrismParseFile(vSession), [rfIgnoreCase,rfReplaceAll]);
+
   //Guarda o HTML Original
   vSession.ActiveForm.FormHTMLText:= HTMLText;
 
@@ -461,7 +482,7 @@ begin
   if Assigned((vSession.ActiveForm as TPrismForm).OnProcessHTML) then
   (vSession.ActiveForm as TPrismForm).OnProcessHTML((vSession.ActiveForm as TPrismForm), HTMLText);
 
-  //Chama o Inicio da Tradu√ß√£o
+  //Chama o Inicio da TraduÁ„o
   (vSession.ActiveForm as TPrismForm).DoBeginTranslate;
 
   //Part I
@@ -470,8 +491,8 @@ begin
 
   //Processa $prismbody
   HTMLBodyText:= TD2BridgeClass(vSession.D2BridgeBaseClassActive).HTML.Render.Body.Text;
-  //Retirado a Parte I porque quando usa template mas n√£o tem os elementos declarados
-  //ao entrar uma segunda vez os elementos n√£o atualizam
+  //Retirado a Parte I porque quando usa template mas n„o tem os elementos declarados
+  //ao entrar uma segunda vez os elementos n„o atualizam
   //Part I - Processa o Body
   //Session.ActiveForm.ProcessControlsToHTML(HTMLBodyText);
   HTMLText:= StringReplace(HTMLText, '$prismbody', HTMLBodyText, [rfIgnoreCase]);
@@ -506,7 +527,7 @@ begin
   //Processa as CallBack TAGs HTML {{Texto}}
   vSession.ActiveForm.ProcessCallBackTagHTML(HTMLText);
 
-  //FIX - Corrige a renderiza√ß√£o do GridDataModel
+  //FIX - Corrige a renderizaÁ„o do GridDataModel
   //Session.ActiveForm.ProcessControlsToHTML(HTMLText);
 
   //Translate
@@ -533,7 +554,7 @@ end;
 
 Procedure TPrismServerHTMLHeaders.LoadPageHTMLFromSession(const Request: TPrismHTTPRequest; Response: TPrismHTTPResponse; Session: TPrismSession);
 begin
- //Obrigat√≥rio rodar dentro da Thread
+ //ObrigatÛrio rodar dentro da Thread
  Session.ExecThread(True,
   Exec_LoadPageHTMLFromSession,
   TValue.From<TPrismHTTPRequest>(Request),
@@ -617,10 +638,16 @@ begin
 
  with HTMLCodeString do
  begin
+  //HTMLCodeString.Add('<base href="/d2dockerinstance/' + IntToStr(D2BridgeManager.API.D2Docker.InstanceNumber) + '/">');
+  {$IFDEF D2DOCKER}
+  Add('<meta name="d2dockerinstance" content="' + D2BridgeManager.ServerController.D2DockerInstanceAlias + '">');
+  Add('<script defer src="/js/d2docker.js"></script>');
+  {$ENDIF}
+
   Add(AddVariables(Session));
-  Add(AddHeadsIncludes(HTMLText, Request.Header.Host, Request.Header.ServerPort, Request.Header.PathWithoutParams, Session));
+  Add(AddHeadsIncludes(HTMLText, Request.Host, Request.ServerPort, Request.AppBase, Session));
   //Add(AddJSPrismWS);
-  //Add(AddOnLoad(Request.Header.Host, Request.Header.ServerPort, Request.Header.PathWithoutParams, Session));
+  //Add(AddOnLoad(Request.Host, Request.ServerPort, Request.PathWithoutParams, Session));
   Add(AddPrismMethods);
   Add(AddControlEvents(Session));
   add(AddJSCallBackPrismMethods(Session));
@@ -633,6 +660,18 @@ begin
  HTMLCodeString.Free;
 end;
 
+function TPrismServerHTMLHeaders.ProcessPrismParseFile(ASession: IPrismSession): string;
+begin
+ Result:= 'prismparse=true';
+{$IFDEF D2DOCKER}
+ if PrismBaseClass.IsD2DockerContext then
+  Result:= Result + '&d2dockerinstance=' + PrismBaseClass.ServerController.D2DockerInstanceAlias;
+{$ENDIF}
+ Result:= Result + '&token=' + ASession.Token;
+ Result:= Result + '&uuid=' + ASession.UUID;
+ Result:= Result + '&formuuid=' + ASession.ActiveForm.FormUUID;
+end;
+
 procedure TPrismServerHTMLHeaders.ReloadPage(Session: TPrismSession);
 begin
  //Session.ExecJS('window.location.href = ''reloadpage?token='+ Session.Token +'&prismsession='+ Session.UUID +''';');
@@ -643,19 +682,26 @@ begin
 
  Session.SetReloading(true);
 
+
  Session.ExecJS
  (
   'if (window.location.href.indexOf(''#'') > -1) {'+ sLineBreak +
   '  history.replaceState({}, document.title, window.location.pathname);'+ sLineBreak +
   '}'+ sLineBreak +
   'var currentPath = window.location.pathname;'+ sLineBreak +
-  'document.cookie = "D2Bridge_Token = ' + Session.Token + '; path=" + currentPath;'+ sLineBreak +
-  'document.cookie = "D2Bridge_PrismSession = ' + Session.UUID + '; path=" + currentPath;'+ sLineBreak +
-  'document.cookie = "D2Bridge_ReloadPage = true; path=" + currentPath;'+ sLineBreak +
+  'document.cookie = "D2Bridge_Token=' + Session.Token + '; Max-Age=10; SameSite=Lax; path=" + currentPath;'+ sLineBreak +
+  'document.cookie = "D2Bridge_PrismSession=' + Session.UUID + '; Max-Age=10; SameSite=Lax; path=" + currentPath;'+ sLineBreak +
+  'document.cookie = "D2Bridge_ReloadPage=true; Max-Age=10; SameSite=Lax; path=" + currentPath;'+ sLineBreak +
+{$IFDEF D2DOCKER}
+  'document.cookie = "D2DockerInstance=' + D2BridgeManager.ServerController.D2DockerInstanceAlias + '; Max-Age=10; SameSite=Lax; path=" + currentPath;'+ sLineBreak +
+{$ENDIF}
   'isReloadPage = true;' + sLineBreak +
   'location.reload(true);'
  );
+
+
+
+
 end;
 
 end.
-

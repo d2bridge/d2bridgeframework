@@ -1,19 +1,25 @@
-Ôªø{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -49,6 +55,7 @@ type
    FStoredSelectedItem: String;
    FMaxRecords: Integer;
    FRefreshDataOnLoad: boolean;
+   FRendering: boolean;
    procedure UpdateData; override;
    procedure UpdateListData;
    procedure SetDataSource(const Value: TDataSource);
@@ -103,6 +110,8 @@ var
  vSelectEvent: IPrismControlEvent;
 begin
  inherited;
+
+ FRendering:= false;
 
  FRefreshDataOnLoad:= false;
  FRefreshData:= false;
@@ -212,7 +221,7 @@ begin
  if Assigned(FPrismDataLink.DataSource) and Assigned(FPrismDataLink.DataSet) and Assigned(FPrismDataLink.Field) then
  begin
   if (FPrismDataLink.DataSet.Active) then
-   Result:= FPrismDataLink.Field.AsString
+   Result:= FPrismDataLink.FieldText
   else
    Result:= ''
  end else
@@ -293,6 +302,8 @@ var
  I, Pos, vQtdRec: Integer;
  vExistItem: Boolean;
  vKeyFieldValue, vFieldValue: string;
+ vBookmark: TBookmark;
+ vHasBookmark: Boolean;
 begin
  result:= '';
 
@@ -311,8 +322,17 @@ begin
      (not FPrismDataLinkLookup.DataSet.IsEmpty) then
   begin
    try
+    vHasBookmark := False;
+
+    try
+     vBookmark := FPrismDataLinkLookup.DataSet.GetBookmark;
+     vHasBookmark := True;
+    except
+    end;
+
     FRefreshListData:= false;
-    Pos:= FPrismDataLinkLookup.DataSet.RecNo;
+    if not vHasBookmark then
+     Pos:= FPrismDataLinkLookup.DataSet.RecNo;
     FPrismDataLinkLookup.DataSet.DisableControls;
 
     vQtdRec:= 0;
@@ -320,15 +340,18 @@ begin
     FPrismDataLinkLookup.DataSet.First;
     repeat
     begin
-     vFieldValue:= FPrismDataLinkLookup.FieldText(true);
-     vKeyFieldValue:= FPrismDataLinkLookup.KeyFieldText(true);
+     try
+      vFieldValue:= FPrismDataLinkLookup.FieldText(true);
+      vKeyFieldValue:= FPrismDataLinkLookup.KeyFieldText(true);
 
-     if SameText(vKeyFieldValue, FStoredSelectedItem) then
-     begin
-      result := result + '<option selected value="'+ vKeyFieldValue + '">' + vFieldValue + '</option>';
-      vExistItem:= true;
-     end else
-      result := result + '<option value="'+ vKeyFieldValue + '">' + vFieldValue + '</option>';
+      if SameText(vKeyFieldValue, FStoredSelectedItem) then
+      begin
+       result := result + '<option selected value="'+ vKeyFieldValue + '">' + vFieldValue + '</option>';
+       vExistItem:= true;
+      end else
+       result := result + '<option value="'+ vKeyFieldValue + '">' + vFieldValue + '</option>';
+     except
+     end;
 
      FPrismDataLinkLookup.DataSet.next;
 
@@ -345,7 +368,13 @@ begin
     end;
    end;
 
-   FPrismDataLinkLookup.DataSet.RecNo:= Pos;
+   if vHasBookmark then
+   begin
+    if FPrismDataLinkLookup.DataSet.BookmarkValid(vBookmark) then
+     FPrismDataLinkLookup.DataSet.GotoBookmark(vBookmark);
+    FPrismDataLinkLookup.DataSet.FreeBookmark(vBookmark);
+   end else
+    FPrismDataLinkLookup.DataSet.RecNo:= Pos;
    FPrismDataLinkLookup.DataSet.EnableControls;
   end;
 
@@ -506,6 +535,11 @@ begin
     if AForceUpdate then
      FRefreshListData:= true;
 
+    if FRendering then
+     exit;
+
+    FRendering:= true;
+
 //    RefreshHTMLControl;
 //    ProcessHTML;
 //
@@ -527,6 +561,7 @@ begin
   finally
    FRefreshData:= false;
    FRefreshListData:= false;
+   FRendering:= false;
   end;
  end;
 
@@ -542,7 +577,7 @@ begin
    ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").value = "";')
  end;
 
- //Se faz necess√°rio o inherited aqui embaixo para que o combobox receba atualiza√ß√£o de visibilidade apos a tabela abrir
+ //Se faz necess·rio o inherited aqui embaixo para que o combobox receba atualizaÁ„o de visibilidade apos a tabela abrir
  inherited;
 end;
 

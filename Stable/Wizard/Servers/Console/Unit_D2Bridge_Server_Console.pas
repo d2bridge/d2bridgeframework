@@ -189,6 +189,9 @@ var
  FInfo: TStrings;
  vSecForWaitEnter: Integer;
 begin
+ if D2BridgeServerController.IsD2DockerContext then
+  Exit;
+
  WaitingForReturn:= false;
  TimerThreadTerminated:= false;
 
@@ -239,11 +242,14 @@ begin
  D2BridgeServerController.ServerAppAuthor:= 'Talis Jonatas Gomes';
  }
   
- vServerPort:= D2BridgeServerController.Prism.INIConfig.ServerPort({Server_Port});
- vServerName:= D2BridgeServerController.Prism.INIConfig.ServerName('{Server_Name}');
+ vServerPort:= D2BridgeServerController.APPConfig.ServerPort({Server_Port});
+ vServerName:= D2BridgeServerController.APPConfig.ServerName('{Server_Name}');
 
  D2BridgeServerController.APPName:= '{ProjectName}';
  //D2BridgeServerController.APPDescription:= 'My D2Bridge Web APP';
+
+
+ //D2BridgeServerController.APPSignature:= '...';
 
  //Security
  {
@@ -261,6 +267,19 @@ begin
  }
 
  D2BridgeServerController.PrimaryFormClass:= {PrimaryFormClass};
+
+// * REST OPTIONS
+{
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTAccess.Secret:= 'My Secret';
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTAccess.ExpirationMinutes:= 30;
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTRefresh.Secret:= 'My Secret Refresh Token';
+ D2BridgeServerController.Prism.Rest.Options.Security.JWTRefresh.ExpirationDays:= 30;
+ D2BridgeServerController.Prism.Rest.Options.MaxRecord:= 2000;
+ D2BridgeServerController.Prism.Rest.Options.ShowMetadata:= show;
+ D2BridgeServerController.Prism.Rest.Options.FieldNameLowerCase:= true;
+ D2BridgeServerController.Prism.Rest.Options.FormatSettings.ShortDateFormat:= 'YYYY-MM-DD';
+ D2BridgeServerController.Prism.Rest.Options.EnableRESTServerExternal:= true;
+}
 
  //seconds to Send Session to TimeOut and Destroy after Disconnected
  //D2BridgeServerController.Prism.Options.SessionTimeOut:= 300;
@@ -299,6 +318,10 @@ begin
 
  D2BridgeServerController.Prism.Options.PathJS:= '{PathJS}';
  D2BridgeServerController.Prism.Options.PathCSS:= '{PathCSS}';
+
+ //Wait start D2Docker
+ if D2BridgeServerController.IsD2DockerContext then
+  Exit;
 
  DisplayStartConfigServer;
 

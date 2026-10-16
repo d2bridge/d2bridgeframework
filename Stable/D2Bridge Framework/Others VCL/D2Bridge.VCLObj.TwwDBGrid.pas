@@ -1,19 +1,25 @@
-﻿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -25,7 +31,6 @@
     Email: contato@deuxsoftware.com.br
  +--------------------------------------------------------------------------+
 }
-
 
 {$I ..\D2Bridge.inc}
 
@@ -112,7 +117,7 @@ function TVCLObjTwwDBGrid.GetFieldName(APos: integer): String;
 var i : integer;
     vSelectedField: String;
 begin
-   {Os campos da grid estão concatenados como = FieldName Width Title}
+   {Os campos da grid est�o concatenados como = FieldName Width Title}
    vSelectedField := TwwDBGrid(FD2BridgeItemVCLObj.Item).Selected.KeyNames[APos];
    vSelectedField := Copy(vSelectedField,1,Pos(#9,vSelectedField)-1);
    Result         := vSelectedField;
@@ -122,7 +127,7 @@ function TVCLObjTwwDBGrid.GetTextFieldName(APos: Integer): String;
 var i : integer;
     vTextField: String;
 begin
-   {Os campos da grid estão concatenados como = FieldName Width Title}
+   {Os campos da grid est�o concatenados como = FieldName Width Title}
    vTextField := TwwDBGrid(FD2BridgeItemVCLObj.Item).Selected.KeyNames[APos];
    delete(vTextField,1,Pos(#9,vTextField)); // delete fieldname
    delete(vTextField,1,Pos(#9,vTextField)); // delete width
@@ -134,7 +139,7 @@ function TVCLObjTwwDBGrid.GetWidthFieldGrid(APos: Integer): Integer;
 var i : integer;
     vWidthField: String;
 begin
-   {Os campos da grid estão concatenados como = FieldName Width Title}
+   {Os campos da grid est�o concatenados como = FieldName Width Title}
    vWidthField := TwwDBGrid(FD2BridgeItemVCLObj.Item).Selected.KeyNames[APos];
    delete(vWidthField,1,Pos(#9,vWidthField)); // delete fieldname
    vWidthField := Copy(vWidthField,1,Pos(#9,vWidthField)-1);

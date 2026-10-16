@@ -14,7 +14,7 @@ uses
 
 
 type
- CrudOperation =
+ TCrudOperation =
   (OpOpen = 0,
    OpSearch,
    OpInsert,
@@ -24,7 +24,7 @@ type
    OpBack,
    OpClose);
 
- CrudPermission =
+ TCrudPermission =
   (PermTotal = 0,
    PermSearch,
    PermEdit,
@@ -32,7 +32,7 @@ type
    PermSave,
    PermDelete);
 
-  TCrudPermissions = set of CrudPermission;
+  TCrudPermissions = set of TCrudPermission;
 
 
 type
@@ -76,14 +76,14 @@ type
     FColSize: string;
     FColAlign: string;
     //Active Operation
-    FActiveOperation: CrudOperation;
+    FActiveOperation: TCrudOperation;
     //Set/Get Property
     function GetCrudPermissions: TCrudPermissions;
     procedure SetCrudPermissions(APermissions: TCrudPermissions);
     function GetColSize: string;
     procedure SetColSize(AValue: string);
   private
-    function CrudOperationPermission(ACrudOperation: CrudOperation): boolean;
+    function CrudOperationPermission(ACrudOperation: TCrudOperation): boolean;
     procedure Crud_DoExportCardSearch; virtual;
     procedure Crud_DoExportCardData; virtual;
     function GetColAlign: string;
@@ -99,7 +99,7 @@ type
     procedure CrudDefaultSearch(ATable: string; AWhereFields: array of string; ASearch: string; AAnd: TArray<string>; AOr: TArray<string>; AOrderFields: TArray<string>); overload;
   protected
     //Crud Operations
-    procedure CrudOperation(ACrudOperation: CrudOperation);
+    procedure CrudOperation(ACrudOperation: TCrudOperation);
     //Crud Events
     procedure CrudOnOpen; virtual;
     procedure CrudOnSearch(AText: string); virtual;
@@ -118,7 +118,7 @@ type
     procedure EndRender; override;
 
   published
-    property ActiveOperation: CrudOperation read FActiveOperation;
+    property ActiveOperation: TCrudOperation read FActiveOperation;
     property StartCard: TD2BridgeItemHTMLCard read FStartCard;
     property CrudColAlign: string read GetColAlign write SetColAlign;
     property CrudValidationGroup: string read FCrudValidationGroup write FCrudValidationGroup;
@@ -372,7 +372,9 @@ begin
  FCrud_CardSearch.Items.Add(FCrud_RowGrid);
 end;
 
-procedure TForm_CrudTemplate.CrudOperation(ACrudOperation: CrudOperation);
+procedure TForm_CrudTemplate.CrudOperation(ACrudOperation: TCrudOperation);
+var
+ vActualOperation: TCrudOperation;
 begin
  if CrudOperationPermission(ACrudOperation) then
  begin
@@ -399,48 +401,53 @@ begin
   end else
   if ACrudOperation in [OpInsert] then
   begin
+   vActualOperation:= FActiveOperation;
+   FActiveOperation:= ACrudOperation;
    if CrudOnInsert then
    begin
-    FActiveOperation:= ACrudOperation;
-
     FCrud_CardSearch.PrismControl.AsControl.Visible:= false;
     FCrud_CardData.PrismControl.AsControl.Visible:= not FCrud_CardSearch.PrismControl.AsControl.Visible;
-   end;
+   end else
+    FActiveOperation:= vActualOperation;
   end else
   if ACrudOperation in [OpEdit] then
   begin
+   vActualOperation:= FActiveOperation;
+   FActiveOperation:= ACrudOperation;
    if CrudOnEdit then
    begin
-    FActiveOperation:= ACrudOperation;
-
     if FStartCard <> FCrud_CardData then
     begin
      FCrud_CardSearch.PrismControl.AsControl.Visible:= false;
      FCrud_CardData.PrismControl.AsControl.Visible:= not FCrud_CardSearch.PrismControl.AsControl.Visible;
     end;
-   end;
+   end else
+    FActiveOperation:= vActualOperation;
   end else
   if ACrudOperation in [OpSave] then
   begin
+   vActualOperation:= FActiveOperation;
+   FActiveOperation:= ACrudOperation;
    if CrudOnSave then
    begin
-    FActiveOperation:= ACrudOperation;
-
     Showmessage('Record saved', true, true);
 
     CrudOperation(OpBack);
-   end;
+   end else
+    FActiveOperation:= vActualOperation;
   end else
   if ACrudOperation in [OpDelete] then
   begin
    if MessageDlg('Do you confirm to delete this record?', mtconfirmation, [mbyes,mbno], 0) = mryes then
-   if CrudOnDelete then
    begin
-    FActiveOperation:= ACrudOperation;
+    if CrudOnDelete then
+    begin
+     FActiveOperation:= ACrudOperation;
 
-    Showmessage('Record deleted', true, true);
+     Showmessage('Record deleted', true, true);
 
-    CrudOperation(OpBack);
+     CrudOperation(OpBack);
+    end;
    end;
   end else
   if ACrudOperation in [OpBack] then
@@ -449,6 +456,8 @@ begin
     if MessageDlg('Do you cancel this record?', mtconfirmation, [mbyes,mbno], 0) = mrNo then
      exit;
 
+   vActualOperation:= FActiveOperation;
+   FActiveOperation:= ACrudOperation;
    if CrudOnBack then
    begin
     FActiveOperation:= ACrudOperation;
@@ -463,10 +472,13 @@ begin
 
      CrudOperation(OPOpen);
     end;
-   end;
+   end else
+    FActiveOperation:= vActualOperation;
   end else
   if ACrudOperation in [OpClose] then
   begin
+   vActualOperation:= FActiveOperation;
+   FActiveOperation:= ACrudOperation;
    if CrudOnClose then
    begin
     FActiveOperation:= ACrudOperation;
@@ -475,12 +487,13 @@ begin
 
     if FStartCard = FCrud_CardSearch then
      close;
-   end;
+   end else
+    FActiveOperation:= vActualOperation;
   end;
  end;
 end;
 
-function TForm_CrudTemplate.CrudOperationPermission(ACrudOperation: CrudOperation): boolean;
+function TForm_CrudTemplate.CrudOperationPermission(ACrudOperation: TCrudOperation): boolean;
 begin
  result:= true;
 

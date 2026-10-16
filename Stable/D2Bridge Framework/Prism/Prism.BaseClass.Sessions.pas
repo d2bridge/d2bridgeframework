@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -67,6 +73,7 @@ type
    function Exist(AUUID: string): Boolean; overload;
    function Exist(AUUID, AToken: string): Boolean; overload;
    function FromPushID(const APushID: string): IPrismSession;
+   function FromAuthID(const AAuthID: string): IPrismSession;
    function Items: TList<IPrismSession>;
 
    procedure AddThreadhID(AID: integer; APrismSession: IPrismSession);
@@ -88,7 +95,8 @@ type
 implementation
 
 Uses
- Prism.Session.Helper;
+ Prism.Session.Helper,
+ Prism.BaseClass;
 
 
 { TPrismSessions }
@@ -120,7 +128,8 @@ begin
    FDictThreadIDSessions.AddOrSetValue(AID, APrismSession as TPrismSession)
   else
   begin
-   SetMainThreadPrismSession(APrismSession);
+   if Assigned(APrismSession) then
+    SetMainThreadPrismSession(APrismSession);
   end;
  except
  end;
@@ -357,6 +366,44 @@ begin
 {$ENDIF}
 end;
 
+function TPrismSessions.FromAuthID(const AAuthID: string): IPrismSession;
+var
+ I, J: Integer;
+ vPrismSession: TPrismSession;
+begin
+ FLock.BeginRead;
+
+ try
+  System.Initialize(Result);
+
+  try
+    for I := 0 to Pred(FDictSessions.Count) do
+    begin
+     for vPrismSession in FDictSessions.Values do
+     begin
+      try
+       if Assigned(vPrismSession) then
+       begin
+        if vPrismSession.AuthID = AAuthID then
+        begin
+         Result:= vPrismSession;
+         Break;
+        end;
+       end;
+      except
+      end;
+     end;
+
+     if Assigned(Result) then
+     Break;
+    end;
+  except
+  end;
+ finally
+  FLock.EndRead;
+ end;
+end;
+
 function TPrismSessions.FromPushID(const APushID: string): IPrismSession;
 var
  I, J: Integer;
@@ -397,17 +444,24 @@ begin
 end;
 
 function TPrismSessions.FromThreadID(const AThreadID: Integer; AAlertErrorThreadID: Boolean): IPrismSession;
+var
+ vExist: boolean;
 begin
  System.Initialize(Result);
 
  FLockIDSession.BeginRead;
 
  try
+  vExist:= false;
+
   if (not (FDictThreadIDSessions.Count <= 0)) then
    if FDictThreadIDSessions.ContainsKey(AThreadID) then
+   begin
+    vExist:= true;
     Result:= FDictThreadIDSessions[AThreadID];
+   end;
 
-  if Result = nil then
+  if (Result = nil) and (not vExist) then
   begin
    try
     if (AThreadID = MainThreadID) and
@@ -415,8 +469,16 @@ begin
     begin
      result:= FMainThreadPrismSession;
     end else
-     if AAlertErrorThreadID or IsDebuggerPresent then
-      raise Exception.Create('Error searching Session Thread, Session is nil: Error 7002');
+     if AAlertErrorThreadID or
+        IsDebuggerPresent or
+        PrismBaseClass.IsD2DockerContext then
+     begin
+{$IFDEF D2DOCKER}
+       PrismBaseClass.API.D2Docker.DoLogException('Error searching Session Thread, Session is nil: Error 7002')
+{$ELSE}
+       raise Exception.Create('Error searching Session Thread, Session is nil: Error 7002');
+{$ENDIF}
+     end;
    except
    end;
   end;

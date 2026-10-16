@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -182,7 +188,7 @@ begin
  if FPopupHTML <> '' then
   HTMLControl:= '<div class="d2bridgedropdown dropdown" id="dropdown' + UpperCase(NamePrefix) + '" for="' + UpperCase(NamePrefix) + '">' + sLineBreak;
 
- HTMLControl:= HTMLControl + '<button '+ HTMLCore +'>' + StringReplace(FStoredCaption, '&', '', [rfReplaceAll]) + '</button>';
+ HTMLControl:= HTMLControl + '<button '+ HTMLCore +'>' + StringReplace(FStoredCaption, '&', '', [rfReplaceAll]) + D2BridgeItem.HTMLItems.Text + '</button>';
  if FPopupHTML <> '' then
   HTMLControl:= HTMLControl + sLineBreak;
 
@@ -222,7 +228,25 @@ begin
  if (AForceUpdate) or (FStoredCaption <> NewCaption) then
  begin
   FStoredCaption := NewCaption;
-  ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").innerHTML = '+ FormatValueHTML(FStoredCaption) +';');
+  //ScriptJS.Add('document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]").innerHTML = '+ FormatValueHTML(FStoredCaption) +';');
+
+  ScriptJS.Add(
+  '(() => {'+
+  '  const el = document.querySelector("[id='+AnsiUpperCase(NamePrefix)+' i]");'+
+  '  if (!el) return;'+
+  '  const badge = el.querySelector("span.d2bridgelabelbadge");'+
+  '  if (badge) {'+
+  '    const badgeHTML = badge.outerHTML;'+
+  '    const wasBefore = (badge.previousSibling === null);'+
+  '    el.innerHTML = '+FormatValueHTML(FStoredCaption)+';'+
+  '    if (wasBefore) el.insertAdjacentHTML("afterbegin", badgeHTML);'+
+  '    else el.insertAdjacentHTML("beforeend", badgeHTML);'+
+  '  } else {'+
+  '    el.innerHTML = '+FormatValueHTML(FStoredCaption)+';'+
+  '  }'+
+  '})();'
+  );
+
  end;
 
 end;

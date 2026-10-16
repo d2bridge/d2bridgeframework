@@ -5,7 +5,6 @@ object FormMenu: TFormMenu
   Width = 508
   Caption = 'Form Menu'
   Menu = MainMenu1
-  LCLVersion = '3.8.0.0'
   object MainMenu1: TMainMenu
     Left = 384
     Top = 32

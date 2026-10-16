@@ -552,9 +552,10 @@ body.swal2-shown > [aria-hidden='true'] {
 }
 
 .d2bridgesidemenulogotitle {
-    color: white;
     font-weight: 800;
     font-size: 18px;
+    padding-left: 5px;
+    padding-right: 5px;    
 }
 
 .d2bridgesidemenusubtitle {
@@ -564,7 +565,6 @@ body.swal2-shown > [aria-hidden='true'] {
 .d2bridgesidemenu {
     max-width: 264px;
     min-width: 264px;
-    background: #212529;
     transition: all 0.35s ease-in-out;
     position: fixed;
     height: 100%;
@@ -580,7 +580,6 @@ body.swal2-shown > [aria-hidden='true'] {
     transition: all 0.35s ease-in-out;
     left: 264px;
     width: calc(100% - 264px);
-    background: #f0f0f0;
     position: relative;
 }
 
@@ -635,7 +634,6 @@ body.swal2-shown > [aria-hidden='true'] {
 
 a.d2bridgesidemenu-link {
     padding: .625rem 1.625rem;
-    color: #e9ecef;
     position: relative;
     display: block;
     font-size: 1rem;
@@ -840,7 +838,7 @@ a.d2bridgesidemenu-link {
 
 
 /* Card */
-.d2bridgecard.card:not(.d2bridgespacemode,.kanbancard) {    
+.d2bridgecard.card:not(.d2bridgespacemode,.kanbancard,.cardnotrenderizable) {    
     border-radius: 0.475rem;
     box-shadow: #a8b4d01a 0 4px 25px 0;  
     /* border: 0; */
@@ -992,10 +990,15 @@ img.image-background-fullsize[src=""] {
 }
 .d2bridgecard-img.card-img-square {
     width: 100%; 
-    height: 100%; 
+    height: auto; 
     object-fit: cover; 
 }
 
+.d2bridgecol .col-img-square {
+    width: 100%; 
+    height: auto; 
+    object-fit: cover; 
+}
 
 
 
@@ -1108,10 +1111,6 @@ img.image-background-fullsize[src=""] {
 .d2bridgerow .d2bridgecolinline >.form-select:not(:last-child) {
     margin-right: 4px;
 }
-.row > .d2bridgecol:not(:first-child) > button,
-.row > .d2bridgecol:not(:first-child) > .btn {
-    margin-left: calc((var(--bs-gutter-x) * 0.5) * -1);
-}
 /*
 .d2bridgerow .d2bridgecolinline .form-control,
 .d2bridgerow .d2bridgecolinline .form-select,
@@ -1126,50 +1125,50 @@ img.image-background-fullsize[src=""] {
 
 /* Space Mode */
 /* Space Mode */
-.d2bridgespacemode .btn:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)),
-.d2bridgespacemode .form-control:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)),        
-.d2bridgespacemode .form-select:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)),
-.d2bridgespacemode .form-floating>.form-control:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .btn,
+.d2bridgespacemode .form-control,        
+.d2bridgespacemode .form-select,
+.d2bridgespacemode .form-floating>.form-control {
     height: 52px;
     padding: .375rem .75rem;
     box-sizing: border-box;
 }
 
-.d2bridgespacemode .form-switch .form-check-input:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *))  {
+.d2bridgespacemode .form-switch .form-check-input  {
     height: 30px;
     width: 50px;
     padding: .375rem .75rem;
     box-sizing: border-box;
 }
 
-.d2bridgespacemode .form-check:not(.form-switch) .form-check-input:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *))  {
+.d2bridgespacemode .form-check:not(.form-switch) .form-check-input  {
     height: 25px;
     width: 25px;
     padding: .375rem .75rem;
     box-sizing: border-box;
 }
 
-.d2bridgespacemode .d2bridgeswtich:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .d2bridgeswtich {
     align-items: center !important;
 }
 
-.d2bridgespacemode .form-control-plaintext:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)),
-.d2bridgespacemode .form-check-label:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .form-control-plaintext,
+.d2bridgespacemode .form-check-label {
     height: 52px;
     box-sizing: border-box;
     align-content: center;
 }
 
-.d2bridgespacemode .form-control-plaintext:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .form-control-plaintext {
     height: 52px;
     box-sizing: border-box;
 }
 
-.d2bridgespacemode .d2bridgeformgrouplabel:not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .d2bridgeformgrouplabel {
     padding-bottom: 8px;
 }
 
-.d2bridgespacemode .row:not(:last-of-type):not(.nod2bridgespacemode):not(:is(.nod2bridgespacemode *)) {
+.d2bridgespacemode .row:not(:last-of-type) {
     padding-bottom: 10px;
 }
 
@@ -1218,13 +1217,20 @@ div.col-full >* {
 .colaligncenter {
     justify-content: center !important;
 }
+.colalignleft img,
+.colalignright img,
+.colaligncenter img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
 /*
 .colaligncenter .d2bridgecolinline {
     text-align: center;
 }
 */    
 .colalignleft {
-    justify-content: start !important;        
+    justify-content: start !important;    
 }
 /*
 .colalignleft .d2bridgecolinline {
@@ -1265,13 +1271,22 @@ div.col-full >* {
 .readonly {
     pointer-events: none;
     opacity: 1;
-    cursor: default;
+    cursor: none !important;
 }
 
-[disabled]:not(span),
-.disabled:not(span),
-.readonly:not(span) {
-    background-color: #e9ecef;
+input[disabled],
+select[disabled],
+textarea[disabled],
+button[disabled],
+input.disabled,
+select.disabled,
+textarea.disabled,
+button.disabled,
+input.readonly,
+select.readonly,
+textarea.readonly,
+button.readonly {
+  background-color: #e9ecef;
 }
 
 
@@ -1489,10 +1504,28 @@ div.col-full >* {
 }
   
 
+/* Badge */
+.form-control-plaintext.d2bridgelabelbadge {
+    vertical-align: sub;    
+}
+
+button.d2bridgebuttonbadge > span.d2bridgelabelbadge.bg-auto:not([style*="background"]) {
+  background-color: #cfd6dc;
+}
+
+span.d2bridgelabelbadge.badgeindicator {
+  font-size: 0;
+}
+
+span.d2bridgelabelbadge.badgeindicator::after {
+  content: "";
+}
+
 
 /* Space min */
 .spacemin-y .d2bridgecol,
 .spacemin-y .d2bridgecol span,
+.spacemin-y.d2bridgecol span.d2bridgeformgroupcontrol,
 .spacemin-y .d2bridgecard-body {
     padding-top: 0px !important;
     margin-top: 0px!important;
@@ -1500,9 +1533,21 @@ div.col-full >* {
     margin-bottom: 0px !important;
 }
 
-.spacemin-y .d2bridgecard-img,
+.spacemin-y .d2bridgecard-img:not(.card-img-top),
 .spacemin-y .d2bridgecard-body,
 .d2bridgecard-body.spacemin-y {
     padding-top: 2px !important;
     padding-bottom: 2px !important;
+}
+
+
+/* FIX */
+.d2bridgefixinvisible {
+    padding: 0!important;
+    margin: 0!important;
+    display: none;
+}
+
+.row > .d2bridgecol.d2bridgecol-button {
+  padding-left: 0;
 }

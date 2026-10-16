@@ -56,6 +56,38 @@
 					</Other>
 				</CompilerOptions>
 			</Item>
+      <Item Name="D2Docker Deploy">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="web{PathDelim}{ProjectName}.d2d" ApplyConventions="False"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="{D2BridgePath};{D2BridgePath}{PathDelim}Prism;{D2BridgePath}{PathDelim}OthersLCL;"/>
+            <UnitOutputDirectory Value="lib{PathDelim}$(TargetCPU)-$(TargetOS){PathDelim}Release{PathDelim}Web"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <RelocatableUnit Value="True"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <RunWithoutDebug Value="True"/>
+            </Debugging>
+            <Options>
+              <ExecutableType Value="Library"/>
+            </Options>
+          </Linking>
+          <Other>
+            <CustomOptions Value="-dD2Bridge -dD2Docker"/>
+            <ExecuteBefore>
+              <Command Value="FixD2BridgeLazBuild.bat"/>
+              <CompileReasons Build="False"/>
+            </ExecuteBefore>
+          </Other>
+        </CompilerOptions>
+      </Item>					
 			<Item Name="Debug">
 				<CompilerOptions>
 					<Version Value="11"/>
@@ -164,20 +196,6 @@
 				<ComponentName Value="Form1"/>
 				<ResourceBaseClass Value="Form"/>
 				<UnitName Value="Unit1"/>
-			</Unit>
-			<Unit>
-				<Filename Value="{D2BridgePath}D2Bridge.ServerControllerBase.pas"/>
-				<IsPartOfProject Value="True"/>
-				<ComponentName Value="D2BridgeServerControllerBase"/>
-				<HasResources Value="True"/>
-				<ResourceBaseClass Value="DataModule"/>
-			</Unit>
-			<Unit>
-				<Filename Value="{D2BridgePath}Prism{PathDelim}Prism.SessionBase.pas"/>
-				<IsPartOfProject Value="True"/>
-				<ComponentName Value="PrismSessionBase"/>
-				<HasResources Value="True"/>
-				<ResourceBaseClass Value="DataModule"/>
 			</Unit>
 			<Unit>
 				<Filename Value="{ProjectName}_Session.pas"/>

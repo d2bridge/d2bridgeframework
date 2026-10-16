@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -36,7 +42,10 @@ type
  TPrismSideMenu = class(TPrismMenu, IPrismSideMenu)
   private
    vGroupIndex: Integer;
+   FAccessoryItemsHTML: string;
    procedure RenderHTMLMenuItem(APrismMenuItems: IPrismMenuItems; APrismMenuItem: IPrismMenuItem; var AMenuHTML: TStrings);
+   function GetAccessoryItemsHTML: String;
+   procedure SetAccessoryItemsHTML(const Value: String);
   protected
    procedure Initialize; override;
    procedure ProcessHTML; override;
@@ -50,6 +59,7 @@ type
 
    function IsSideMenu: Boolean; override;
 
+   property AccessoryItemsHTML: String read GetAccessoryItemsHTML write SetAccessoryItemsHTML;
  end;
 
 const
@@ -60,6 +70,7 @@ implementation
 
 uses
   SysUtils,
+  D2Bridge.Util,
   Prism.Menu.SubMenu, Prism.Types, Prism.Forms, D2Bridge.ServerControllerBase;
 
 { TPrismSideMenu }
@@ -73,6 +84,11 @@ destructor TPrismSideMenu.Destroy;
 begin
 
   inherited;
+end;
+
+function TPrismSideMenu.GetAccessoryItemsHTML: String;
+begin
+ Result:= FAccessoryItemsHTML;
 end;
 
 function TPrismSideMenu.GetEnableComponentState: Boolean;
@@ -171,6 +187,41 @@ begin
     //Page Content
     vMenuHTML.Add('<div class="d2bridgesidemenucontent" id="' + AnsiUpperCase(NamePrefix) + 'content"></div>');
 
+
+    //CSS
+    vMenuHTML.Add('<style type="text/css">');
+
+    vMenuHTML.Add('/* Body BackGround */');
+    vMenuHTML.Add('.d2bridgesidemenucontent {');
+    vMenuHTML.Add('  background-color: ' + (Form as TPrismForm).D2BridgeForm.D2Bridge.HTML.Render.BackGroundColor  + ' !important;');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('/* BackGround Color */');
+    vMenuHTML.Add('nav.d2bridgesidemenu {');
+    vMenuHTML.Add('  background-color: ' + ColorToHex(Color) + ' !important;');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('.d2bridgesidemenu {');
+    vMenuHTML.Add('  color: ' + ColorToHex(MenuTextColor) + ' !important;');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('/* Title Color */');
+    vMenuHTML.Add('.d2bridgesidemenu .d2bridgesidemenutitle {');
+    vMenuHTML.Add('  color: ' + ColorToHex(TitleColor) + ';');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('.d2bridgesidemenu .d2bridgesidemenu-link {');
+    vMenuHTML.Add('  color: ' + ColorToHex(MenuTextColor) + ';');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('.d2bridgesidemenu-header {');
+    vMenuHTML.Add('  color: ' + ColorToHex(MenuTextColor) + ';');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('/* Button Ico */');
+    vMenuHTML.Add('.d2bridgsidemenu .navbar-toggler-icon {');
+    vMenuHTML.Add('  color: ' + ColorToHex(MenuTextColor) + ';');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('.d2bridgesidemenu .navbar-toggler:focus {');
+    vMenuHTML.Add('    color: ' + ColorToHex(MenuTextColor) + ';');
+    vMenuHTML.Add('}');
+    vMenuHTML.Add('</style>');
+
+
     //Nav
     vMenuHTML.Add('<nav class="navbar navbar-expand d2bridgesidemenutop border-bottom" id="' + AnsiUpperCase(NamePrefix) + 'navtop">');
     vMenuHTML.Add('<div class="px-3">');
@@ -189,6 +240,11 @@ begin
 //    vMenuHTML.Add('</div>');
     vMenuHTML.Add('<div class="navbar-collapse navbar d-flex justify-content-end gap-2 px-3">');
     vMenuHTML.Add('<div class="d2bridgesidemenutopbox">');
+
+    //Accessory Items
+    if AccessoryItemsHTML <> '' then
+     vMenuHTML.Add(AccessoryItemsHTML);
+
     vMenuHTML.Add('</div>');
     vMenuHTML.Add('</div>');
     vMenuHTML.Add('</nav>');
@@ -332,6 +388,11 @@ begin
 
   AMenuHTML.Add('</ul>');
  end;
+end;
+
+procedure TPrismSideMenu.SetAccessoryItemsHTML(const Value: String);
+begin
+ FAccessoryItemsHTML:= Value;
 end;
 
 procedure TPrismSideMenu.UpdateServerControls(var ScriptJS: TStrings;

@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -33,7 +39,7 @@ unit D2Bridge.ServerControllerBase;
 interface
 
 uses
-  Classes, SysUtils, DB,
+  Classes, SysUtils, DB, Rtti,
 {$IFNDEF FPC}
   MidasLib, DBClient, ADODB,
   {$IFDEF FMX}
@@ -51,10 +57,19 @@ uses
   {$IFNDEF D2BRIDGE}
   D2Bridge.Instance,
   {$ENDIF}
+{$IFDEF D2DOCKER}
+  D2Bridge.API.D2Docker.Comm,
+{$ENDIF}
   Prism, Prism.Interfaces, Prism.Session, Prism.Types, D2Bridge.Interfaces,
-  D2Bridge.Manager, D2Bridge.Types, D2Bridge.Prism.Form, D2Bridge.Lang.Interfaces;
+  D2Bridge.Manager, D2Bridge.Types, D2Bridge.Prism.Form, D2Bridge.Lang.Interfaces,
+  D2Bridge.Rest.Session, D2Bridge.Rest.Server, D2Bridge.Rest.Interfaces;
 
 
+type
+ TD2BridgeRestServer = D2Bridge.Rest.Server.TD2BridgeRestServer;
+ TD2BridgeRestSession = D2Bridge.Rest.Session.TD2BridgeRestSession;
+
+{$M+}
 type
  TOnSessionChange = procedure(AChangeType: TSessionConnectionStatus; APrismSession: IPrismSession) of object;
 
@@ -72,6 +87,8 @@ type
    CDSLogUUID: TStringField;
    CDSLogFormName: TStringField;
    DataSourceLog: TDataSource;
+  strict private
+   procedure Exec_SessionChange(EnumChangeType: TValue; varSession: TValue);
   private
    FD2BridgeManager: TD2BridgeManager;
    FOnSessionChange: TOnSessionChange;
@@ -82,10 +99,13 @@ type
    FServerDescription: String;
    FAPPName: string;
    FAPPDescription: string;
+   FAPPSignature: string;
    FServerAppAuthor: string;
    FServerAppDescription: string;
    FServerAppTitle: string;
    FStopping: Boolean;
+   FAppConfig: ID2BridgeAPPConfig;
+   FNeedConsole: boolean;
    function GetPrism: TPrism;
    function GetD2BridgeManager: TD2BridgeManager;
    function GetPort: Integer;
@@ -108,19 +128,27 @@ type
    function GetAPPName: string;
    procedure SetAPPName(const Value: string);
    function GetAPPDescription: string;
+   function GetAPPSignature: string;
    function GetServerAppAuthor: string;
    function GetServerAppDescription: string;
    function GetServerAppTitle: string;
    procedure SetAPPDescription(const Value: string);
+   procedure SetAPPSignature(const Value: string);
    procedure SetServerAppAuthor(const Value: string);
    procedure SetServerAppDescription(const Value: string);
    procedure SetServerAppTitle(const Value: string);
+   function GetServerCompiler: string;
+   function GetServerSO: string;
+   function CheckNeedConsole: boolean;
+  protected
+   procedure RegisterRoutes(RestServer: TD2BridgeRestServer); virtual;
   public
    FDefaultFontSize: {$IFnDEF FMX}integer{$ELSE}single{$ENDIF};
+   FSkipFirstStartOnD2Docker: Boolean;
 
    constructor Create(AOwner: TComponent); override;
    destructor Destroy; override;
-
+  published
    function Started: boolean;
    procedure StartServer;
    procedure StopServer;
@@ -133,6 +161,20 @@ type
    function ServerInfoConsole: TStrings; virtual;
 
    function ServerUUID: string;
+
+   function AppConfig: ID2BridgeAPPConfig;
+
+   function APPVersion: ID2BridgeAPPConfigVersion;
+
+   function IsD2DockerContext: Boolean;
+
+   function NeedConsole: boolean;
+
+   function D2DockerInstanceAlias: string;
+
+{$IFDEF D2DOCKER}
+   procedure StartD2Docker;
+{$ENDIF}
 
    property Languages: TD2BridgeLangs read GetLanguages write SetLanguages;
    property Language: TD2BridgeLang write SetLanguage;
@@ -148,11 +190,15 @@ type
    property OnSessionChange: TOnSessionChange read FOnSessionChange write FOnSessionChange;
    property APPName: string read GetAPPName write SetAPPName;
    property APPDescription: string read GetAPPDescription write SetAPPDescription;
+   property APPSignature: string read GetAPPSignature write SetAPPSignature;
    property ServerAppTitle: string read GetServerAppTitle write SetServerAppTitle;
    property ServerAppDescription: string read GetServerAppDescription write SetServerAppDescription;
    property ServerAppAuthor: string read GetServerAppAuthor write SetServerAppAuthor;
- end;
+   property ServerSO: string read GetServerSO;
+   property ServerCompiler: string read GetServerCompiler;
 
+ end;
+{$M-}
 
 var
  D2BridgeServerControllerBase: TD2BridgeServerControllerBase;
@@ -166,7 +212,13 @@ implementation
 {$ENDIF}
 
 uses
-  D2Bridge.Prism, D2Bridge.Util, Prism.Util, Prism.Session.Helper;
+  D2Bridge.Prism, D2Bridge.Util, D2Bridge.APPConfig,
+ {$IFDEF D2DOCKER}
+  D2Bridge.API.D2Docker,
+ {$ENDIF}
+  Prism.Util,
+  Prism.Session.Thread.Proc,
+  Prism.Session.Helper;
 
 
 function IsEscapePressed: Boolean;
@@ -177,9 +229,9 @@ var
 begin
   Result := False;
 
-  {$IFDEF FPC}
-  Exit(false);
-  {$ENDIF}
+//  {$IFDEF FPC}
+//  Exit(false);
+//  {$ENDIF}
 
 
   InputHandle := GetStdHandle(STD_INPUT_HANDLE);
@@ -209,6 +261,27 @@ end;
 
 { TD2BridgeServerControllerBase }
 
+function TD2BridgeServerControllerBase.AppConfig: ID2BridgeAPPConfig;
+begin
+ result:= FAppConfig;
+end;
+
+function TD2BridgeServerControllerBase.APPVersion: ID2BridgeAPPConfigVersion;
+begin
+ result:= AppConfig.Version;
+end;
+
+function TD2BridgeServerControllerBase.CheckNeedConsole: boolean;
+begin
+ result:= true;
+
+ {$IFDEF MSWINDOWS}
+ result:= not IsRunningAsService;
+ {$ENDIF}
+
+ result:= not IsD2DockerContext;
+end;
+
 procedure TD2BridgeServerControllerBase.CloseAllSessions;
 begin
  GetPrism.Sessions.CloseAll;
@@ -236,14 +309,31 @@ begin
 end;
 
 constructor TD2BridgeServerControllerBase.Create;
+{$IFNDEF FPC}
 var
  vLabel: TLabel;
+{$ENDIF}
 begin
  inherited;
 
+ //Fix lazarus Randomize error
+{$IFDEF FPC}
+  Randomize;
+  RandSeed := RandSeed
+   xor Integer(GetTickCount64)
+   xor RandSeed
+   xor TThread.CurrentThread.ThreadID;
+{$ENDIF}
+
+
  D2BridgeServerControllerBase:= self;
 
+ FNeedConsole:= false;
+
 {$IFDEF D2BRIDGE}
+ FNeedConsole:= CheckNeedConsole;
+
+ FAppConfig:= TD2BridgeAppConfig.Create;
  CDSLog.CreateDataset;
 
  FStartTime:= now;
@@ -263,10 +353,12 @@ begin
  FAPPDescription:= 'My Web D2Bridge APP';
  FStopping:= false;
 
-
  FServerAppTitle:= {$IFNDEF FPC}'Delphi Web'{$ELSE}'Lazarus Web'{$ENDIF};
  FServerAppDescription:= 'D2Bridge Framework '+ D2BridgeManager.Version;
  FServerAppAuthor:= 'by Talis Jonatas Gomes';
+
+ if IsD2DockerContext then
+  FSkipFirstStartOnD2Docker:= true;
 
  {$IFNDEF FPC}
  vLabel:= TLabel.Create(nil);
@@ -275,6 +367,25 @@ begin
  {$ELSE}
  FDefaultFontSize:= Screen.SystemFont.Size;
  {$ENDIF}
+
+ RegisterRoutes(Prism.Rest.Server as TD2BridgeRestServer);
+
+ {$IFDEF D2DOCKER}
+ {$IFDEF FPC}
+ D2Bridge.API.D2Docker.Comm.LinkerLaz;
+ {$ENDIF}
+ (D2BridgeManager.API.D2Docker as TD2BridgeAPIDocker).AddRTTIObjects;
+ {$ENDIF}
+{$ENDIF}
+end;
+
+function TD2BridgeServerControllerBase.D2DockerInstanceAlias: string;
+begin
+ result:= '';
+
+{$IFDEF D2DOCKER}
+ if IsD2DockerContext then
+  result:= 'InstanceID'+IntToStr(D2BridgeManager.API.D2Docker.InstanceNumber) + 'C' + IntToStr(D2BridgeManager.API.D2Docker.ContainerId);
 {$ENDIF}
 end;
 
@@ -282,6 +393,7 @@ destructor TD2BridgeServerControllerBase.Destroy;
 var
  vPrism: TPrism;
  vPrismIntf: IPrismBaseClass;
+ vAPPConfig: TD2BridgeAPPConfig;
 begin
  {$IFNDEF D2BRIDGE}
  D2BridgeInstance.PrismSession.Data.Free;
@@ -292,26 +404,47 @@ begin
  if Assigned(FD2BridgeManager) then
   if FD2BridgeManager.Prism.Started then
    FD2BridgeManager.Prism.StopServer;
- if (Not IsDebuggerPresent) {$IFnDEF FPC}or (not ReportMemoryLeaksOnShutdown){$ENDIF} then
+ if (not IsD2DockerContext) and ((Not IsDebuggerPresent) {$IFnDEF FPC}or (not ReportMemoryLeaksOnShutdown){$ENDIF}) then
  begin
+  {$IFDEF FPC}
+  TerminateProcess(GetCurrentProcess, 0);
+  {$ENDIF}
   {$IFDEF MSWINDOWS}
   ExitProcess(0);
   {$ELSE}
   Halt(0);
   {$ENDIF}
+ end else
+ if IsD2DockerContext then
+ begin
+  CloseAllSessions;
  end;
+
+ vAPPConfig:= FAPPConfig as TD2BridgeAPPConfig;
+ FAPPConfig:= nil;
+ vAPPConfig.Free;
 
  vPrismIntf:= FD2BridgeManager.Prism;
 
  FreeAndNil(FD2BridgeManager);
  FreeAndNil(FCriticalSessionCDSLog);
 
+
  if Assigned(vPrismIntf) then
  begin
   vPrism:= (vPrismIntf as TPrism);
+  vPrism.ServerController:= nil;
   vPrismIntf:= nil;
   vPrism.Free;
  end;
+
+
+// if Assigned(FD2BridgeManager.Prism) then
+// (FD2BridgeManager.Prism as TPrism).Destroy;
+//
+
+
+
  {$ENDIF}
 
  inherited;
@@ -419,6 +552,84 @@ begin
 
  if Assigned(FOnSessionChange) then
   FOnSessionChange(AChangeType, APrismSession);
+
+
+ //Async Thread *logs/etc
+ TPrismSessionThreadProc.Create(nil,
+  Exec_SessionChange,
+  TValue.From<Integer>(Ord(AChangeType)),
+  TValue.From<TPrismSession>(APrismSession as TPrismSession)
+ ).Exec;
+end;
+
+procedure TD2BridgeServerControllerBase.Exec_SessionChange(EnumChangeType: TValue; varSession: TValue);
+var
+ vPrismSession: TPrismSession;
+ vConnectionStatus: TSessionConnectionStatus;
+begin
+ try
+  vPrismSession:= (varSession.AsObject as TPrismSession);
+  vConnectionStatus:= TSessionConnectionStatus(EnumChangeType.AsInteger);
+
+  case vConnectionStatus of
+   scsNone:
+    begin
+
+    end;
+   scsNewSession:
+    begin
+     if Prism.Options.LogAccess then
+      Prism.LogAccess(vPrismSession.InfoConnection);
+
+{$IFDEF D2DOCKER}
+      D2BridgeManager.API.D2Docker.DoNewSession(vPrismSession);
+{$ENDIF}
+    end;
+   scsCloseSession:
+    begin
+{$IFDEF D2DOCKER}
+      D2BridgeManager.API.D2Docker.DoCloseSession(vPrismSession);
+{$ENDIF}
+    end;
+   scsActiveSession:
+    begin
+
+    end;
+   scsClosingSession:
+    begin
+
+    end;
+   scsExpireSession:
+    begin
+
+    end;
+   scsStabilizedConnectioSession:
+    begin
+
+    end;
+   scsLostConnectioSession:
+    begin
+
+    end;
+   scsReconnectedSession:
+    begin
+
+    end;
+   scsIdleSession:
+    begin
+
+    end;
+   scsActivitySession:
+    begin
+
+    end;
+   scsDestroySession:
+    begin
+
+    end;
+  end;
+ except
+ end;
 end;
 
 function TD2BridgeServerControllerBase.GetAPPDescription: string;
@@ -429,6 +640,11 @@ end;
 function TD2BridgeServerControllerBase.GetAPPName: string;
 begin
  result:= FAPPName;
+end;
+
+function TD2BridgeServerControllerBase.GetAPPSignature: string;
+begin
+ Result := FAPPSignature;
 end;
 
 function TD2BridgeServerControllerBase.GetD2BridgeManager: TD2BridgeManager;
@@ -471,6 +687,35 @@ begin
  Result := FServerAppTitle;
 end;
 
+function TD2BridgeServerControllerBase.GetServerCompiler: string;
+begin
+ {$IFDEF FPC}
+   // Lazarus / Free Pascal
+   Result :=
+     'Lazarus (FPC ' + {$I %FPCVERSION%} + ')';
+ {$ELSE}
+   {$IF DEFINED(DELPHI_FLORENCE_UP)}
+    Result := 'Delphi 13' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Florence)';
+   {$ELSEIF DEFINED(DELPHI_ATHENS_UP)}
+    Result := 'Delphi 12' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Athens)';
+   {$ELSEIF DEFINED(DELPHIX_ALEXANDRIA_UP)}
+    Result := 'Delphi 11' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Alexandria)';
+   {$ELSEIF DEFINED(DELPHIX_SYDNEY_UP)}
+    Result := 'Delphi 10.4' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Sydney)';
+   {$ELSEIF DEFINED(DELPHIX_RIO_UP)}
+    Result := 'Delphi 10.3' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Rio)';
+   {$ELSEIF DEFINED(DELPHIX_TOKYO_UP)}
+    Result := 'Delphi 10.2' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Tokyo)';
+   {$ELSEIF DEFINED(DELPHIX_BERLIN_UP)}
+    Result := 'Delphi 10.1' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Berlin)';
+   {$ELSEIF DEFINED(DELPHIX_SEATTLE_UP)}
+    Result := 'Delphi 10.0' + {$IFDEF FMX}' FMX '{$ELSE}' VCL '{$ENDIF} + '(Seattle)';
+   {$ELSE}
+     Result := 'Delphi ' + {$IFDEF FMX}'FMX'{$ELSE}'VCL'{$ENDIF};
+   {$ENDIF}
+ {$ENDIF}
+end;
+
 function TD2BridgeServerControllerBase.GetServerDescription: String;
 begin
  Result:= FServerDescription;
@@ -480,6 +725,32 @@ function TD2BridgeServerControllerBase.GetServerName: String;
 begin
  Result:= FServerName;
 end;
+
+function TD2BridgeServerControllerBase.GetServerSO: string;
+begin
+ {$IF DEFINED(MSWINDOWS)}
+  {$IFDEF WIN64}
+    Result := 'Win64';
+  {$ELSE}
+    Result := 'Win32';
+  {$ENDIF}
+ {$ELSEIF DEFINED(LINUX)}
+   {$IFDEF CPU64}
+     Result := 'Linux64';
+   {$ELSE}
+     Result := 'Linux32';
+   {$ENDIF}
+ {$ELSEIF DEFINED(DARWIN)}
+   {$IFDEF CPU64}
+     Result := 'macOS64';
+   {$ELSE}
+     Result := 'macOS32';
+   {$ENDIF}
+ {$ELSE}
+   Result := 'unknown';
+ {$ENDIF}
+end;
+
 
 function TD2BridgeServerControllerBase.GetTemplateClassForm: TD2BridgePrismFormClass;
 begin
@@ -494,6 +765,25 @@ end;
 function TD2BridgeServerControllerBase.GetTemplatePageHTMLFile: string;
 begin
  Result:= D2BridgeManager.TemplatePageHTMLFile;
+end;
+
+function TD2BridgeServerControllerBase.IsD2DockerContext: Boolean;
+begin
+ {$IFDEF D2DOCKER}
+  result:= true;
+ {$ELSE}
+  result:= false;
+ {$ENDIF}
+end;
+
+function TD2BridgeServerControllerBase.NeedConsole: boolean;
+begin
+ result:= FNeedConsole;
+end;
+
+procedure TD2BridgeServerControllerBase.RegisterRoutes(RestServer: TD2BridgeRestServer);
+begin
+
 end;
 
 procedure TD2BridgeServerControllerBase.SendMessageToAllSession(AMessage: String);
@@ -562,6 +852,9 @@ function TD2BridgeServerControllerBase.ServerInfoConsoleHeader: TStrings;
 begin
  Result:= TStringList.Create;
 
+ if IsD2DockerContext then
+  Abort;
+
  if FStopping then
  begin
   Result.Add('Stopping D2Bridge Framework Server');
@@ -587,6 +880,11 @@ end;
 procedure TD2BridgeServerControllerBase.SetAPPName(const Value: string);
 begin
  FAPPName:= Value;
+end;
+
+procedure TD2BridgeServerControllerBase.SetAPPSignature(const Value: string);
+begin
+ FAPPSignature := Value;
 end;
 
 procedure TD2BridgeServerControllerBase.SetLanguage(const Value: TD2BridgeLang);
@@ -655,10 +953,31 @@ begin
  D2BridgeManager.TemplatePageHTMLFile := Value;
 end;
 
+{$IFDEF D2DOCKER}
+procedure TD2BridgeServerControllerBase.StartD2Docker;
+begin
+ FSkipFirstStartOnD2Docker:= false;
+
+ StartServer;
+
+ while Started do
+ begin
+   Sleep(1);
+ end;
+end;
+{$ENDIF}
+
 function TD2BridgeServerControllerBase.Started: boolean;
 var
  vTime: int64;
 begin
+ if FStopping or (not Assigned(Prism)) then
+ begin
+  result:= false;
+  Free;
+  exit;
+ end;
+
  Result:= Prism.Started;
 
  //Heart Beat of Main Thread
@@ -694,7 +1013,6 @@ begin
 
       Result:= false;
 
-      Free;
       Break;
      end;
     end else
@@ -710,6 +1028,29 @@ begin
       FStopping:= true;
 
       CloseAllSessions;
+
+      while GetPrism.Sessions.Count > 0 do
+      begin
+       {$IFDEF MSWINDOWS}
+        {$IFnDEF FPC}
+         Application.ProcessMessages;
+        {$ENDIF}
+       {$ENDIF}
+
+       try
+        CheckSynchronize;
+       except
+       end;
+
+       {$IFDEF MSWINDOWS}
+        {$IFnDEF FPC}
+         Application.ProcessMessages;
+        {$ENDIF}
+       {$ENDIF}
+
+       sleep(100);
+      end;
+
      end;
     end;
    except
@@ -725,9 +1066,15 @@ end;
 
 procedure TD2BridgeServerControllerBase.StartServer;
 begin
+ if FSkipFirstStartOnD2Docker then
+ begin
+  FSkipFirstStartOnD2Docker:= false;
+  exit;
+ end;
+
 {$IFDEF MSWINDOWS}
- if Prism.Options.CoInitialize then
-   CoInitializeEx(0, COINIT_MULTITHREADED);
+// if Prism.Options.CoInitialize then
+  CoInitializeEx(0, COINIT_MULTITHREADED);
 {$ENDIF}
 
  //Security

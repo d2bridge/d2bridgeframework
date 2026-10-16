@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -193,6 +199,7 @@ var
  FDeleted: boolean;
  FScrolled: boolean;
  FNewRow: Boolean;
+ vBookMarkValid: boolean;
 begin
  inherited;
 
@@ -214,12 +221,28 @@ begin
    begin
     if (FPreviousBookmark <> nil) then
     begin
-     if DataSet.BookmarkValid(FPreviousBookmark) then
+     try
+      vBookMarkValid:= false;
+      if DataSet.Eof then
+       vBookMarkValid:= false
+      else
+       vBookMarkValid:= DataSet.BookmarkValid(FPreviousBookmark);
+     except
+      vBookMarkValid:= false;
+      DataSet.FreeBookmark(FPreviousBookmark);
+     end;
+
+     if vBookMarkValid then
      begin
       FCanceled:= true;
      end else
       begin
        FDeleted:= true;
+       try
+        DataSet.FreeBookmark(FPreviousBookmark);
+        FPreviousBookmark:= nil;
+       except
+       end;
       end;
     end else
      if DataSet.IsEmpty then
@@ -297,7 +320,8 @@ begin
        if not DataSet.IsEmpty then
          FPreviousBookmark := DataSet.GetBookmark
        else
-         FPreviousBookmark := nil;
+        DataSet.FreeBookmark(FPreviousBookmark);
+        // FPreviousBookmark := nil;
 
        DoDeleted;
       end else
@@ -407,6 +431,12 @@ end;
 
 procedure TPrismDataLinkCore.DoDeleted;
 begin
+ try
+  DataSet.FreeBookmark(FPreviousBookmark);
+ except
+ end;
+ //FPreviousBookmark := nil;
+
  if Assigned(DataSet) then
   if DataSet.ControlsDisabled then
    Exit;
@@ -610,7 +640,8 @@ begin
    if not DataSet.IsEmpty then
      FPreviousBookmark := DataSet.GetBookmark
    else
-     FPreviousBookmark := nil;
+     DataSet.FreeBookmark(FPreviousBookmark);
+     //FPreviousBookmark := nil;
   end else
   begin
    FPreviousRecordCount:= 0;

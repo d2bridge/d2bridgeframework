@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -70,6 +76,8 @@ type
    FLogSecurity: Boolean;
    FLogAccess: Boolean;
    FPathLogException: string;
+   FPathTemp: string;
+   FPathTempSessions: string;
    FCoInitialize: boolean;
    FVCLStyles: boolean;
    FDataWareMapped: TPrismDataWareMapped;
@@ -79,6 +87,7 @@ type
    FShowError500Page: boolean;
    FSecurity: IPrismOptionSecurity;
    FUseMainThread: Boolean;
+   FLogFileMode: TPrismLogFileMode;
    function GetLanguage: string;
    procedure SetLanguage(AValue: string);
    function GetLoading: Boolean;
@@ -113,6 +122,8 @@ type
    procedure SetLogSecurity(const Value: Boolean);
    function GetLogAccess: Boolean;
    procedure SetLogAccess(const Value: Boolean);
+   function GetLogFileMode: TPrismLogFileMode;
+   procedure SetLogFileMode(const Value: TPrismLogFileMode);
    procedure SetPathLogException(const Value: string);
    function GetPathLogException: string;
    procedure SetCoInitialize(const Value: Boolean);
@@ -141,6 +152,10 @@ type
    procedure SetUseMainThread(const Value: Boolean);
    function GetPathFont: string;
    procedure SetPathFont(const Value: string);
+   function GetPathTemp: string;
+   function GetPathTempSessions: string;
+   procedure SetPathTemp(const Value: string);
+   procedure SetPathTempSessions(const Value: string);
   public
    constructor Create;
    destructor Destroy; override;
@@ -153,6 +168,8 @@ type
    property PathCSS: string read GetPathCSS write SetPathCSS;
    property PathJS: string read GetPathJS write SetPathJS;
    property PathFont: string read GetPathFont write SetPathFont;
+   property PathTemp: string read GetPathTemp write SetPathTemp;
+   property PathTempSessions: string read GetPathTempSessions write SetPathTempSessions;
    property RootDirectory: string read GetRootDirectory write SetRootDirectory;
    property IncludeSweetAlert2: Boolean read GetIncludeSweetAlert2 write SetIncludeSweetAlert2;
    property IncludeJQuery: Boolean read GetIncludeJQuery write SetIncludeJQuery;
@@ -167,6 +184,7 @@ type
    property LogException: Boolean read GetLogException write SetLogException;
    property LogSecurity: Boolean read GetLogSecurity write SetLogSecurity;
    property LogAccess: Boolean read GetLogAccess write SetLogAccess;
+   property LogFileMode: TPrismLogFileMode read GetLogFileMode write SetLogFileMode;
    property PathLogException: string read GetPathLogException write SetPathLogException;
    property CoInitialize: boolean read GetCoInitialize write SetCoInitialize;
    property VCLStyles: boolean read GetVCLStyles write SetVCLStyles;
@@ -190,7 +208,8 @@ const
 implementation
 
 uses
-  Prism.Options.Security;
+  Prism.Options.Security,
+  Prism.BaseClass;
 
 constructor TPrismOptions.Create;
 begin
@@ -199,6 +218,8 @@ begin
   FPathCSS:= 'css';
   FPathJS:= 'js';
   FPathFont:= 'font';
+  FPathTemp:= 'temp';
+  FPathTempSessions:= 'Sessions';
   FRootDirectory:= 'wwwroot' + PathDelim;
   FIncludeSweetAlert2:= true;
   FIncludeJQuery:= false;
@@ -219,6 +240,7 @@ begin
   FShowError500Page:= IsDebuggerPresent;
   FUseMainThread:= true;
   FLogAccess:= false;
+  FLogFileMode:= lfmPerSession;
 
   FSessionTimeOut:= TimeWaitTimeOutSession div 1000;
   FSessionIdleTimeOut:= TimeWaitIdleSession div 1000;
@@ -382,7 +404,25 @@ end;
 
 function TPrismOptions.GetPathLogException: string;
 begin
-  Result:= FPathLogException;
+ Result:= FPathLogException;
+
+{$IFDEF D2DOCKER}
+  result:= IncludeTrailingPathDelimiter(Result + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
+end;
+
+function TPrismOptions.GetPathTemp: string;
+begin
+ result:= IncludeTrailingPathDelimiter(FPathTemp);
+
+{$IFDEF D2DOCKER}
+  result:= IncludeTrailingPathDelimiter(result + PrismBaseClass.ServerController.D2DockerInstanceAlias);
+{$ENDIF}
+end;
+
+function TPrismOptions.GetPathTempSessions: string;
+begin
+ result:= IncludeTrailingPathDelimiter(PathTemp + FPathTempSessions);
 end;
 
 function TPrismOptions.GetRootDirectory: string;
@@ -434,13 +474,29 @@ function TPrismOptions.LogFile: string;
 var
   vDateTime: string;
 begin
-  vDateTime:= DateTimeToStr(Now);
-  vDateTime:= StringReplace(vDateTime, '-', '_', [rfReplaceAll]);
-  vDateTime:= StringReplace(vDateTime, '/', '_', [rfReplaceAll]);
-  vDateTime:= StringReplace(vDateTime, ':', '_', [rfReplaceAll]);
-  vDateTime:= StringReplace(vDateTime, ' ', '_', [rfReplaceAll]);
+  case FLogFileMode of
+    lfmDaily:
+      Result:= PathLogException + FormatDateTime('yyyy_mm_dd', Now) + '.txt';
+  else
+    begin
+      vDateTime:= DateTimeToStr(Now);
+      vDateTime:= StringReplace(vDateTime, '-', '_', [rfReplaceAll]);
+      vDateTime:= StringReplace(vDateTime, '/', '_', [rfReplaceAll]);
+      vDateTime:= StringReplace(vDateTime, ':', '_', [rfReplaceAll]);
+      vDateTime:= StringReplace(vDateTime, ' ', '_', [rfReplaceAll]);
+      Result:= PathLogException + vDateTime + '.txt';
+    end;
+  end;
+end;
 
-  Result:= PathLogException + vDateTime + '.txt';
+function TPrismOptions.GetLogFileMode: TPrismLogFileMode;
+begin
+  Result:= FLogFileMode;
+end;
+
+procedure TPrismOptions.SetLogFileMode(const Value: TPrismLogFileMode);
+begin
+  FLogFileMode:= Value;
 end;
 
 function TPrismOptions.Security: IPrismOptionSecurity;
@@ -570,6 +626,16 @@ begin
 //   FLogMissing.SaveToFile(PathExportJSON + 'LogLangMissing.txt');
  except
  end;
+end;
+
+procedure TPrismOptions.SetPathTemp(const Value: string);
+begin
+ FPathTemp:= Value;
+end;
+
+procedure TPrismOptions.SetPathTempSessions(const Value: string);
+begin
+ FPathTempSessions:= Value;
 end;
 
 procedure TPrismOptions.SetRootDirectory(const Value: string);

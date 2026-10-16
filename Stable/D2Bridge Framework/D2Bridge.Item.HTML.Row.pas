@@ -1,19 +1,25 @@
-ï»¿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -49,7 +55,7 @@ type
    FIsRow: boolean;
    FIsCol: boolean;
    FIsDiv: boolean;
-   //FunÃ§Ãµes
+   //Funções
    function GetItems: TList<ID2BridgeItem>;
    function GetInLine: Boolean;
    procedure SetInLine(Value: Boolean);
@@ -198,8 +204,9 @@ procedure TD2BridgeItemHTMLRow.BeginReader;
 var
  HTMLText: String;
  vCSSClass: string;
- I: integer;
+ I, J: integer;
  vJustRow: boolean;
+ vExistFormGroup: boolean;
  vRow: ID2BridgeItemHTMLRow;
 begin
  if HTMLTagRow = '' then
@@ -221,6 +228,7 @@ begin
   if FD2BridgeItems.Count > 1 then
   begin
    vJustRow:= true;
+   vExistFormGroup:= false;
 
    for I := 0 to Pred(FD2BridgeItems.Count) do
    begin
@@ -238,8 +246,39 @@ begin
      end else
       vRow:= nil;
     end;
-
    end;
+
+
+   for I := 0 to Pred(FD2BridgeItems.Count) do
+   begin
+    if (not Supports(FD2BridgeItems.Items.Items[I], ID2BridgeItemHTMLRow, vRow)) then
+    begin
+     continue;
+    end;
+
+    if Supports(FD2BridgeItems.Items.Items[I], ID2BridgeItemHTMLFormGroup) then
+    begin
+     vExistFormGroup:= true;
+     break;
+    end else
+    if vRow.IsCol and (vRow.Items.Count > 0) then
+    begin
+     for J := 0 to Pred(vRow.Items.Count) do
+     begin
+      if Supports(vRow.Items.Items[J], ID2BridgeItemHTMLFormGroup) then
+      begin
+       vExistFormGroup:= true;
+       break;
+      end;
+     end;
+    end;
+   end;
+
+
+   if vExistFormGroup then
+    if POS('hasd2bridgeformgroup', vCSSClass) <= 0 then
+     vCSSClass:= Trim(vCSSClass + ' ' + 'hasd2bridgeformgroup');
+
 
    if vJustRow then
     vCSSClass:= StringReplace(vCSSClass, D2Bridge.HTML.CSS.Col.colinline, '', [rfReplaceAll]);
@@ -362,4 +401,3 @@ end;
 //end;
 
 end.
-

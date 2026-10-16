@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -60,6 +66,7 @@ type
    Image: TCSSClassImage;
    TabsColor: TCSSClassTabsColor;
    Color: TCSSClassColor;
+   BG: TCSSClassColor;
    ColorName: TCSSClassColorName;
    Button: TCSSClassButton;
    DivHtml: TCSSClassDIV;
@@ -103,8 +110,8 @@ type
    colsize1 = 'col-xl-1 col-md-4 col-6';
    colsize2 = 'col-xl-2 col-md-4 col-6';
    colsize3 = 'col-xl-3 col-md-5 col-6';
-   colsize4 = 'col-xl-4 col-md-6 col-12';
-   colsize5 = 'col-xl-5 col-md-8 col-12';
+   colsize4 = 'col-xl-4 col-md-6 col-6';
+   colsize5 = 'col-xl-5 col-md-8 col-6';
    colsize6 = 'col-xl-6 col-md-8 col-12';
    colsize7 = 'col-xl-7 col-md-12 col-12';
    colsize8 = 'col-xl-8 col-md-12 col-12';
@@ -112,7 +119,19 @@ type
    colsize10 = 'col-xl-10 col-md-12 col-12';
    colsize11 = 'col-xl-11 col-md-12 col-12';
    colsize12 = 'col-xl-12 col-md-12 col-12';
-   colfull = 'col col-xs-auto col-full';
+   col1 = 'col-1';
+   col2 = 'col-2';
+   col3 = 'col-3';
+   col4 = 'col-4';
+   col5 = 'col-5';
+   col6 = 'col-6';
+   col7 = 'col-7';
+   col8 = 'col-8';
+   col9 = 'col-9';
+   col10 = 'col-10';
+   col11 = 'col-11';
+   col12 = 'col-12';
+   colfull = 'col col-full';
    {$ENDREGION}
    colinline = 'd2bridgecolinline';
    nocolinline = 'd2bridgenocolinline';
@@ -130,11 +149,16 @@ type
  {$REGION 'CARD'}
  TCSSClassCard = class
   const
-   Card_Center = 'card-center d2bridgespacemode';
-   Card_Center_Small = 'card-center-sm d2bridgespacemode';
-   Card_Center_Large = 'card-center-lg d2bridgespacemode';
-   Card_Center_ExtraLarge = 'card-center-xl d2bridgespacemode';
-   Card_Center_Fullscreen = 'card-center-full d2bridgespacemode';
+   Card_Center = 'card-center';
+   Card_Center_Small = 'card-center-sm';
+   Card_Center_Large = 'card-center-lg';
+   Card_Center_ExtraLarge = 'card-center-xl';
+   Card_Center_Fullscreen = 'card-center-full';
+   Card_Center_Space = 'card-center d2bridgespacemode';
+   Card_Center_Space_Small = 'card-center-sm d2bridgespacemode';
+   Card_Center_Space_Large = 'card-center-lg d2bridgespacemode';
+   Card_Center_Space_ExtraLarge = 'card-center-xl d2bridgespacemode';
+   Card_Center_Space_Fullscreen = 'card-center-full d2bridgespacemode';
    Image_Ico = 'card-img-ico';
    Card_Not_Renderizable = 'cardnotrenderizable';
  end;
@@ -144,6 +168,7 @@ type
  {$REGION 'CARDGRID'}
  TCSSClassCardGrid = class
   const
+   CardGridCol = 'row-cols';
    CardGridAuto = 'row-cols-auto';
    CardGridX1 = 'row-cols-1';
    CardGridX2 = 'row-cols-1 row-cols-sm-1 row-cols-md-2 row-cols-lg-2 row-cols-xl-2 row-cols-xxl-3';
@@ -184,6 +209,7 @@ type
    Image_BG10_FullSize = Image_Bg_FullSize + ' ' + Image_Dark10;
    Image_Card_Ico = 'card-img-ico';
    Image_Card_Square = 'card-img-square';
+   Image_Col_Square = 'col-img-square';
  end;
  {$ENDREGION}
 
@@ -227,13 +253,31 @@ type
 
  {$REGION 'Color'}
   TCSSClassColor = class
-   const
-    primary = 'bg-primary';
-    secondary = 'bg-secondary';
-    success = 'bg-success';
-    info = 'bg-info';
-    warning = 'bg-warning';
-    danger = 'bg-danger';
+   strict private
+    type
+     TToTColor = class
+      const
+       primary = $00FD6E0D;
+       secondary = $007D756C;
+       success = $00548719;
+       info = $00F0CA0D;
+       light = $00FAF9F8;
+       warning = $0007C1FF;
+       danger = $004535DC;
+       dark = $00292521;
+     end;
+   public
+    const
+     primary = 'bg-primary';
+     secondary = 'bg-secondary';
+     success = 'bg-success';
+     info = 'bg-info';
+     light = 'bg-light';
+     warning = 'bg-warning';
+     danger = 'bg-danger';
+     dark = 'bg-dark';
+    class var
+     TColor: TToTColor;
   end;
  {$ENDREGION}
 
@@ -517,6 +561,7 @@ type
       increase = 'btn-success [override-button-fa fa-plus]';
       more = 'btn-success [override-button-fa fa-plus]';
       add = 'btn-success [override-button-fa fa-plus]';
+      apply = 'btn-success [override-button-fa-solid fa-check-double]';
       options = 'btn-primary [override-button-fa fa-sliders]';
       config = 'btn-secondary [override-button-fa fa-cog]';
       menu = 'btn-info [override-button-fa fa-menu]';
@@ -670,7 +715,6 @@ type
   const
    SpaceMin_top_bottom = 'spacemin-y';
    spacemode = 'd2bridgespacemode';
-   nospacemode = 'nod2bridgespacemode';
    margim_auto = 'm-auto';
    margim_left_right_auto = 'mx-auto';
    margim_top_bottom_auto = 'my-auto';
@@ -812,6 +856,7 @@ type
   Col: TCSSClassCol;
   TabsColor: TCSSClassTabsColor;
   Color: TCSSClassColor;
+  BG: TCSSClassColor; //same Color
   ColorName: TCSSClassColorName;
   Button: TCSSClassButton;
   DivHtml: TCSSClassDIV;

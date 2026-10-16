@@ -1,5 +1,5 @@
 # D2Bridge Framework
-D2Bridge Framework is Delphi Web.
+D2Bridge Framework is Delphi and Lazarus Web.
 This Framework was designed to compile your Delphi project on the Web, all processing is done synchronously, nothing changes in your Delphi code or in your existing project. You keep your project as is and only export what is visual, it is as if your project suddenly turned into a BackEnd. Third-party components are also supported.
 
 
@@ -17,8 +17,9 @@ São Paulo - Brazil
 ## Compatibility
 Editions:
 - All Delphi Editions (Community, Professional, Enterprise and Architect)
+- Lazarus Win32/Win64
 
-Version:
+Delphi Version:
 - Delphi Seattle (10.0)
 - Delphi Berlin (10.1)
 - Delphi Tokyo (10.2)
@@ -26,11 +27,24 @@ Version:
 - Delphi Sydney (10.4)
 - Delphi Alexandria (11.3)
 - Delphi Athens (12.0)
+- Delphi Athens (12.0)
+
+Lazarus Version:
+- Lazarus 3.4
+- Lazarus 3.6
+- Lazarus 3.8
+- Lazarus 4.0
+- Lazarus 4.2
 
 
 ## Repository SVN
 https://d2bridge.com.br/svn/d2bridge/trunk
+User: anonymous (no password)
 (use SVN Cliente - Tortoise)
+
+
+## Repository GIT
+https://github.com/d2bridge/d2bridgeframework
 
 
 ## Download
@@ -61,24 +75,37 @@ For consultancy or paid support contact https://www.d2bridge.com.br or email: ta
 
 
 ## License
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+ +--------------------------------------------------------------------------+
+  D2Bridge Framework Content
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  Author: Talis Jonatas Gomes
+  Email: talisjonatas@me.com
+
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
+
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
 
+  God bless you
+ +--------------------------------------------------------------------------+
 
 
 ## Roadmap
-(Updated at April, 29, 2025)
-- D2Docker
+(Updated at November, 04, 2025)
 - Native Dashboard
 - Search in Combobox (auto-complete)
 - DBGrid rendering with events by Columns/Rows
@@ -86,11 +113,9 @@ For consultancy or paid support contact https://www.d2bridge.com.br or email: ta
 - Vertical Grid for mobile devices
 - Location Service
 - Handle browser back button
-- Bind static URL routes
 - D2Bridge Framework Studio (drag and drop IDE for exporting Form controls)
 - Compile on Linux with Lazarus
 - Native PWA support
-
 
 
 ## Contributing

@@ -3,7 +3,7 @@
         <ProjectGuid>{F9D19490-C8BF-4AC1-AC1A-D1EA65A4792D}</ProjectGuid>
         <MainSource>DEMOControls.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">D2Bridge Web Debug</Config>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Application</AppType>
         <FrameworkType>VCL</FrameworkType>

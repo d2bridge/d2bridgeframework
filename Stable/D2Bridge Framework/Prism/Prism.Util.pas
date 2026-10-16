@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -56,6 +62,7 @@ function HTMLRemoveItemFromClass(AHTML, ItemREMOVE: String): String;
 function HTMLAddItemFromStyle(AHTML, ItemADD, ItemAValue: String): String;
 function HTMLRemoveItemFromStyle(AHTML, ItemREMOVE: String; ItemREMOVEValue: string = ''): String;
 function ExistForClass(ACSSClass, ASearch: String): boolean;
+function AddItemFromStyle(AStyles, ItemADD, ItemAValue: String): String;
 
 function ConvertHTMLKeyToVK(KeyName: string): Word;
 
@@ -454,6 +461,66 @@ begin
 
  if (Pos(ASearch, ACSSClass) = 1) or (Pos(' '+ASearch+'', ACSSClass) > 1) then
   result:= true;
+end;
+
+function AddItemFromStyle(AStyles, ItemADD, ItemAValue: String): String;
+var
+ PosInit, PosEnd: integer;
+ ItemPosInit, ItemPosEnd: integer;
+ StyleText: string;
+ ItemStyleText: string;
+ vExistPos: boolean;
+begin
+ ItemStyleText:= '';
+ ItemPosInit:= -1;
+
+ StyleText:= Trim(AStyles);
+
+ repeat
+  StyleText:= StringReplace(StyleText, '; ', ';', [rfReplaceAll]);
+  vExistPos:= Pos('; ', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ' ;', ';', [rfReplaceAll]);
+  vExistPos:= Pos(' ;', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ': ', ':', [rfReplaceAll]);
+  vExistPos:= Pos(': ', StyleText) > 0;
+ until not vExistPos;
+ repeat
+  StyleText:= StringReplace(StyleText, ' :', ':', [rfReplaceAll]);
+  vExistPos:= Pos(' :', StyleText) > 0;
+ until not vExistPos;
+
+ if StyleText <> '' then
+  if Copy(StyleText, Length(StyleText)) <> ';' then
+   StyleText:= StyleText + ';';
+
+ if (Pos(AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) = 1) then
+  ItemPosInit:= Pos(AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) + Length(ItemADD+':')
+ else
+  if (Pos(';'+AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText)) >= 1) then
+   ItemPosInit:= Pos(';'+AnsiUpperCase(ItemADD)+':', AnsiUpperCase(StyleText));
+
+ if ItemPosInit >= 0 then
+ begin
+  ItemPosEnd:= Pos(';', AnsiUpperCase(Copy(StyleText, ItemPosInit + 1)));
+  if ItemPosEnd <= 0 then
+   ItemPosEnd:= Pos(';', AnsiUpperCase(Copy(StyleText, ItemPosInit)));
+  ItemStyleText:= Copy(StyleText, ItemPosInit + 1, ItemPosEnd);
+
+  StyleText:= StringReplace(StyleText, ItemStyleText, '', [rfReplaceAll, rfIgnoreCase]);
+ end;
+
+ ItemStyleText:= ItemADD + ':' + ItemAValue;
+ if not ItemStyleText.EndsWith(';') then
+  ItemStyleText:= ItemStyleText + ';';
+
+ StyleText:= StyleText + ItemStyleText;
+
+ //result:= Copy(AStyles, 1, PosInit-1) + StyleText + Copy(AStyles, PosInit + PosEnd -1);
+ result:= StyleText;
 end;
 
 function ConvertHTMLKeyToVK(KeyName: string): Word;

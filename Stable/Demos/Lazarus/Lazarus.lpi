@@ -124,6 +124,45 @@
           </Linking>
         </CompilerOptions>
       </Item>
+      <Item Name="D2Docker Deploy">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="web\Lazarus.d2d" ApplyConventions="False"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="..\..\D2Bridge Framework;..\..\D2Bridge Framework\Prism;..\..\D2Bridge Framework\OthersLCL"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\Release\Web"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <RunWithoutDebug Value="True"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+              <ExecutableType Value="Library"/>
+            </Options>
+          </Linking>
+          <Other>
+            <CustomOptions Value="-dD2Bridge
+-dD2Docker"/>
+            <ExecuteBefore>
+              <Command Value="FixD2BridgeLazCompile.bat"/>
+              <CompileReasons Build="False"/>
+            </ExecuteBefore>
+          </Other>
+        </CompilerOptions>
+      </Item>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>

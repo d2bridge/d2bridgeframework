@@ -1,19 +1,25 @@
-﻿{
+{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -612,7 +618,7 @@ begin
   if ADataWareEvent in [TPrismDataLinkEvent.Updated] then
   begin
    vJSONArrayColumns:= Columns.ColumnsNameToJSON;
-   vJSONDataArray:= FPrismDataLink.DataSet.DataSetToJSON(vJSONArrayColumns, 1, Session.FormatSettings, true);
+   vJSONDataArray:= FPrismDataLink.DataSet.DataSetToJSON(vJSONArrayColumns, 1, false, Session.FormatSettings, true);
    vJSONData:= vJSONDataArray.Items[0].ToJSON;
    UpdateRow(FPrismDataLink.DataSet.RecNo, vJSONData);
    vJSONArrayColumns.Free;
@@ -1625,6 +1631,8 @@ var
  vJSONArrayColumns, vJSONDataArray: TJSONArray;
  Pos: Integer;
  vControlsEnabled: boolean;
+ vBookmark: TBookmark;
+ vHasBookmark: Boolean;
 begin
  vJSONData:= '[]';
 
@@ -1633,14 +1641,23 @@ begin
  if FPrismDataLink.DataSet.Active then
  if FPrismDataLink.DataSet.RecordCount > 0 then
  begin
-  Pos:= FPrismDataLink.DataSet.RecNo;
+  vHasBookmark := False;
+
+  try
+   vBookmark := FPrismDataLink.DataSet.GetBookmark;
+   vHasBookmark := True;
+  except
+  end;
+
+  if not vHasBookmark then
+   Pos:= FPrismDataLink.DataSet.RecNo;
   FPrismDataLink.DataSet.DisableControls;
   FPrismDataLink.DataSet.First;
 
   try
    try
     vJSONArrayColumns:= Columns.ColumnsNameToJSON;
-    vJSONDataArray:= FPrismDataLink.DataSet.DataSetToJSON(vJSONArrayColumns, MaxRecords, Session.FormatSettings, true);
+    vJSONDataArray:= FPrismDataLink.DataSet.DataSetToJSON(vJSONArrayColumns, MaxRecords, false, Session.FormatSettings, true);
     vJSONData:= vJSONDataArray.ToJSON;
     vJSONArrayColumns.Free;
     vJSONDataArray.Free;
@@ -1652,7 +1669,13 @@ begin
     if Assigned(FPrismDataLink.DataSet) then
     if FPrismDataLink.DataSet.Active then
     begin
-     FPrismDataLink.DataSet.RecNo:= Pos;
+     if vHasBookmark then
+     begin
+      if FPrismDataLink.DataSet.BookmarkValid(vBookmark) then
+       FPrismDataLink.DataSet.GotoBookmark(vBookmark);
+      FPrismDataLink.DataSet.FreeBookmark(vBookmark);
+     end else
+      FPrismDataLink.DataSet.RecNo:= Pos;
     end;
 
     try

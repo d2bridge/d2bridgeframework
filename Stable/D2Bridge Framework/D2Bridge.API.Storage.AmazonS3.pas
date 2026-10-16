@@ -5,15 +5,21 @@
   Author: Talis Jonatas Gomes
   Email: talisjonatas@me.com
 
-  This source code is provided 'as-is', without any express or implied
-  warranty. In no event will the author be held liable for any damages
-  arising from the use of this code.
+  This source code is distributed under the terms of the
+  GNU Lesser General Public License (LGPL) version 2.1.
 
-  However, it is granted that this code may be used for any purpose,
-  including commercial applications, but it may not be modified,
-  distributed, or sublicensed without express written authorization from
-  the author (Talis Jonatas Gomes). This includes creating derivative works
-  or distributing the source code through any means.
+  This library is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation; either version 2.1 of the License, or
+  (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this library; if not, see <https://www.gnu.org/licenses/>.
 
   If you use this software in a product, an acknowledgment in the product
   documentation would be appreciated but is not required.
@@ -21,7 +27,7 @@
   God bless you
  +--------------------------------------------------------------------------+
   Thanks for contribution to this Unit to:
-   João B. S. Junior
+   Joao B. S. Junior
    Phone +55 69 99250-3445
    Email jr.playsoft@gmail.com
  +--------------------------------------------------------------------------+
@@ -142,7 +148,7 @@ var
 begin
   FileExt := ExtractFileExt(FileName).ToLower;
 
-  // Verifica a extensão e define o ContentType
+  // Verifica a extensï¿½o e define o ContentType
   if FileExt = '.txt' then
     Result := 'text/plain'
   else if FileExt = '.html' then
@@ -200,7 +206,7 @@ begin
   else if FileExt = '.woff2' then
     Result := 'font/woff2'
   else
-    // Default para tipos binários ou desconhecidos
+    // Default para tipos binï¿½rios ou desconhecidos
     Result := 'application/octet-stream';
 end;
 
@@ -403,4 +409,3 @@ implementation
 
 
 end.
-
