@@ -93,6 +93,7 @@ type
     class Function Save: IButtonModel;
     class Function Edit: IButtonModel;
     class Function Delete: IButtonModel;
+    class Function Decrease: IButtonModel;
     class Function Cancel: IButtonModel;
     class Function Close: IButtonModel;
     class Function Search: IButtonModel;
@@ -327,6 +328,16 @@ begin
  Result.CSSButtonIcon:= TCSSFontAwesome.delete;
  Result.Caption:= D2BridgeInstance.PrismSession.LangNav.Button.CaptionDelete;
  Result.Identity:= 'delete';
+end;
+
+class function TButtonModelClass.Decrease: IButtonModel;
+begin
+ SetDefaults(Result);
+
+ Result.CSSButtonType:= TCSSButtonType.Default.danger;
+ Result.CSSButtonIcon:= TCSSFontAwesome.decrease;
+ Result.Caption:= D2BridgeInstance.PrismSession.LangNav.Button.CaptionDecrease;
+ Result.Identity:= 'decrease';
 end;
 
 class function TButtonModelClass.Download: IButtonModel;

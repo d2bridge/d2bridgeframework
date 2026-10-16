@@ -334,6 +334,12 @@ begin
  if not Enabled then
  result:= result +
   ' disabled';
+ // Hint / tooltip nativo do browser
+ if Assigned(FButtonModel) and (Trim(FButtonModel.Hint) <> '') then
+  result:= result + ' title="' + StringReplace(FButtonModel.Hint, '"', '&quot;', [rfReplaceAll]) + '"'
+ else
+ if Trim(Caption) <> '' then
+  result:= result + ' title="' + StringReplace(Caption, '"', '&quot;', [rfReplaceAll]) + '"';
  result:= result +
   ' style="">';
 

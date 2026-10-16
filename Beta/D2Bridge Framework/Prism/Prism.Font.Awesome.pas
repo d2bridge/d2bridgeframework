@@ -91,6 +91,7 @@ type
     config = 'fa-solid fa-screwdriver-wrench';
     copy = 'fa-solid fa-copy';
     cut = 'fa-solid fa-scissors';
+    decrease = 'fa-solid fa-minus';
     delete = 'fa-solid fa-trash';
     desktop = 'fa-solid fa-desktop';
     doorClosed = 'fa-solid fa-door-closed';
