@@ -1,4 +1,4 @@
-﻿{
+﻿﻿{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
@@ -366,7 +366,7 @@ end;
 
 class function TD2BridgeManager.Version: string;
 begin
- Result:= '2.5.87'; //Version of D2Bridge Framework
+ Result:= '2.5.88'; //Version of D2Bridge Framework
 end;
 
 end.

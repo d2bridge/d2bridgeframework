@@ -152,8 +152,11 @@ var
  vParamStrings: TStrings;
  vLockClient: Boolean;
  vResult: string;
+ vHangTick: Int64;
+ vIdent, vForm, vName: string;
 begin
  vParamStrings:= TStringlist.Create;
+ vHangTick:= 0;
 
  try
   try
@@ -162,8 +165,27 @@ begin
    vPrismCallBack:= (varPrismCallBack.AsObject as TPrismCallBack);
    vLockClient:= varLockClient.AsBoolean;
 
-   //Result is future implementation
-   vResult:= vPrismCallBack.Execute(vParamStrings);
+   vIdent:= '';
+   vForm:= '';
+   vName:= '';
+   if PrismBaseClass.Options.LogHang then
+   begin
+    if Assigned(vPrismSession) then
+     vIdent:= vPrismSession.InfoConnection.Identity;
+    if Assigned(vPrismSession) and Assigned(vPrismSession.ActiveForm) then
+     vForm:= vPrismSession.ActiveForm.Name;
+    if Assigned(vPrismCallBack) then
+     vName:= vPrismCallBack.Name;
+    vHangTick:= PrismBaseClass.HangSpanBegin(vIdent, vForm, vName, 'CallBack');
+   end;
+
+   try
+    //Result is future implementation
+    vResult:= vPrismCallBack.Execute(vParamStrings);
+   finally
+    if vHangTick <> 0 then
+     PrismBaseClass.HangSpanEnd(vHangTick, vIdent, vForm, vName, 'CallBack');
+   end;
   except
   end;
  finally
@@ -184,8 +206,11 @@ var
  vPrismSession: TPrismSession;
  vPrismControlEvent: TPrismControlEvent;
  vLockClient: Boolean;
+ vHangTick: Int64;
+ vIdent, vForm, vComp, vEvent: string;
 begin
  vParamStrings:= TStringList.Create;
+ vHangTick:= 0;
 
  try
   try
@@ -194,7 +219,29 @@ begin
    vPrismControlEvent:= (varPrismCallEvent.AsObject as TPrismControlEvent);
    vLockClient:= varLockClient.AsBoolean;
 
-   vPrismControlEvent.CallEvent(vParamStrings);
+   vIdent:= '';
+   vForm:= '';
+   vComp:= '';
+   vEvent:= 'ExecEvent';
+   if PrismBaseClass.Options.LogHang then
+   begin
+    if Assigned(vPrismSession) then
+     vIdent:= vPrismSession.InfoConnection.Identity;
+    if Assigned(vPrismSession) and Assigned(vPrismSession.ActiveForm) then
+     vForm:= vPrismSession.ActiveForm.Name;
+    if Assigned(vPrismControlEvent) and Assigned(vPrismControlEvent.PrismControl) then
+     vComp:= vPrismControlEvent.PrismControl.Name;
+    if Assigned(vPrismControlEvent) then
+     vEvent:= vPrismControlEvent.EventTypeName;
+    vHangTick:= PrismBaseClass.HangSpanBegin(vIdent, vForm, vComp, vEvent);
+   end;
+
+   try
+    vPrismControlEvent.CallEvent(vParamStrings);
+   finally
+    if vHangTick <> 0 then
+     PrismBaseClass.HangSpanEnd(vHangTick, vIdent, vForm, vComp, vEvent);
+   end;
   except on E: Exception do
    if not SameText(e.Message, 'Operation aborted') then
     vPrismSession.DoException(vPrismControlEvent.PrismControl as TObject, E, vPrismControlEvent.EventTypeName);
@@ -369,6 +416,7 @@ var
  //vFocusedPrismControl: IPrismControl;
  ResulThread: string;
  vComponentDisableIgnore: boolean;
+ vHangTick: Int64;
 begin
  Result:= '';
  vComponentDisableIgnore:= false;
@@ -396,7 +444,7 @@ begin
     end;
 
 
-    //Checa se é o form atual
+    //Checa se ? o form atual
     if (FormUUID = PrismForm.FormUUID) then
     begin
      //Processa ComponentsState
@@ -585,7 +633,25 @@ begin
              try
               try
                if FEvent.PrismControl.Enabled and FEvent.PrismControl.Visible and not FEvent.PrismControl.ReadOnly then
-                ResulThread:= FEvent.CallEventResponse(ParamStrings);
+               begin
+                if PrismBaseClass.Options.LogHang then
+                 vHangTick:= PrismBaseClass.HangSpanBegin(
+                  PrismSession.InfoConnection.Identity,
+                  PrismForm.Name,
+                  FEvent.PrismControl.Name,
+                  FEvent.EventTypeName);
+                try
+                 ResulThread:= FEvent.CallEventResponse(ParamStrings);
+                finally
+                 if vHangTick <> 0 then
+                  PrismBaseClass.HangSpanEnd(
+                   vHangTick,
+                   PrismSession.InfoConnection.Identity,
+                   PrismForm.Name,
+                   FEvent.PrismControl.Name,
+                   FEvent.EventTypeName);
+                end;
+               end;
               except
                on E: Exception do
                PrismSession.DoException(FEvent.PrismControl as TObject, E, FEvent.EventTypeName);

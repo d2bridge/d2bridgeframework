@@ -1529,6 +1529,8 @@ begin
    Exit;
   end;
 
+  PrismBaseClass.MarkSessionTimerTick;
+
   {$REGION 'Parameters'}
    vParamWaitIdleResponse:= 60;
    vParamHeartBeatTime:= PrismBaseClass.Options.HeartBeatTime div 1000;
