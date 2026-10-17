@@ -136,7 +136,7 @@ Use the **Discord channel** for community support.
 
 ---
 
-## 🗺️ Roadmap (Updated Nov 04, 2025)
+## 🗺️ Roadmap
 - Native Dashboard
 - Combobox search (auto‑complete)
 - DBGrid rendering with column/row events
@@ -145,7 +145,6 @@ Use the **Discord channel** for community support.
 - Location service
 - Handle browser back button
 - D2Bridge Framework Studio (drag‑and‑drop IDE for exporting Form controls)
-- Compile on Linux with Lazarus
 - Native PWA support
 
 ---
