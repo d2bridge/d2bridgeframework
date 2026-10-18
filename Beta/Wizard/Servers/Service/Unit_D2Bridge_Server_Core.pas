@@ -71,6 +71,16 @@ begin
   //D2BridgeServerController.Prism.Options.IncludeJQuery:= true;
 
   //D2BridgeServerController.Prism.Options.DataSetLog:= true;
+  //D2BridgeServerController.Prism.Options.LogAccess:= true;
+  //D2BridgeServerController.Prism.Options.LogException:= true;
+  //D2BridgeServerController.Prism.Options.LogSecurity:= true;
+  //D2BridgeServerController.Prism.Options.LogHang:= true;
+  //D2BridgeServerController.Prism.Options.LogFileMode:= lfmDaily;
+  //D2BridgeServerController.Prism.Options.ResourceMonitor:= true;
+  //D2BridgeServerController.Prism.Options.ResourceMonitorIntervalSec:= 60;
+  //D2BridgeServerController.Prism.Options.ResourceMonitorTopProcessCount:= 3;
+  //D2BridgeServerController.Prism.Options.ResourceMonitorCPUAlertPercent:= 70;
+  //D2BridgeServerController.Prism.Options.ResourceMonitorMemoryAlertMB:= 2048;
 
   D2BridgeServerController.Prism.Options.CoInitialize:= true;
 

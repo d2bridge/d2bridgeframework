@@ -31,7 +31,7 @@ This Framework was designed to compile your Delphi project on the Web, all proce
 ---
 
 ## 📦 Versions
-- **Beta:** D2Bridge Framework 2.5.87  
+- **Beta:** D2Bridge Framework 2.5.88  
 - **Stable:** D2Bridge Framework 2.5.78  
 - **License:** LGPL 2.1  
 

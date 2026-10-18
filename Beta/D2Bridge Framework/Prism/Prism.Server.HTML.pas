@@ -149,42 +149,53 @@ var
  vRequest: TPrismHTTPRequest;
  vReponse: TPrismHTTPResponse;
  vSession: TPrismSession;
+ vHangTick: Int64;
+ vIdent: string;
 begin
  vRequest:= (varRequest.AsObject as TPrismHTTPRequest);
  vReponse:= (varResponse.AsObject as TPrismHTTPResponse);
  vSession:= (varSession.AsObject as TPrismSession);
+ vIdent:= '';
+ vHangTick:= 0;
 
+ if Assigned(vSession) then
+  vIdent:= vSession.InfoConnection.Identity;
+
+ vHangTick:= PrismBaseClass.HangSpanBegin(vIdent, '', '', 'GetHTML');
+ try
 {$IFDEF MSWINDOWS}
   if PrismBaseClass.Options.CoInitialize then
    if TThread.CurrentThread.ThreadID <> MainThreadID then
      CoInitializeEx(0, COINIT_MULTITHREADED);
 {$ENDIF}
 
- try
-  (PrismBaseClass as TPrismBaseClass).DoNewSession(vRequest, vReponse, vSession);
- except on E: Exception do
-   begin
-     try
-       vSession.DoException(Self, E, 'OnNewSession');
-     except
-     end;
-   end;
+  try
+   (PrismBaseClass as TPrismBaseClass).DoNewSession(vRequest, vReponse, vSession);
+  except on E: Exception do
+    begin
+      try
+        vSession.DoException(Self, E, 'OnNewSession');
+      except
+      end;
+    end;
+  end;
+
+  try
+   PrismBaseClass.InstancePrimaryForm(vSession);
+  except on E: Exception do
+    begin
+      try
+        vSession.DoException(Self, E, 'InstancePrimaryForm');
+        vSession.Close;
+      except
+      end;
+
+      Abort;
+    end;
+  end;
+ finally
+  PrismBaseClass.HangSpanEnd(vHangTick, vIdent, '', '', 'GetHTML');
  end;
-
- try
-  PrismBaseClass.InstancePrimaryForm(vSession);
- except on E: Exception do
-   begin
-     try
-       vSession.DoException(Self, E, 'InstancePrimaryForm');
-       vSession.Close;
-     except
-     end;
-
-     Abort;
-   end;
- end;
-
 end;
 
 procedure TPrismServerHTML.FinishedGetHTML(APrismWSContext: TPrismWebSocketContext);
@@ -511,6 +522,7 @@ var
  _SessionID: String;
  I: integer;
  vBlockIPLimitConn, vBlockIPLimitSession: boolean;
+ vHangTick: Int64;
 begin
  vPrismSession:= nil;
 
@@ -616,13 +628,18 @@ begin
  // vPrismSession.ExecThread(true,
  //   procedure
  //   begin
-     TD2BridgeForm(TD2BridgeClass(vPrismSession.D2BridgeBaseClassActive).FormAOwner).Clear;
-     TD2BridgeForm(TD2BridgeClass(vPrismSession.D2BridgeBaseClassActive).FormAOwner).Render;
+     vHangTick:= PrismBaseClass.HangSpanBegin(vPrismSession.InfoConnection.Identity, '', '', 'GetHTML.Render');
+     try
+      TD2BridgeForm(TD2BridgeClass(vPrismSession.D2BridgeBaseClassActive).FormAOwner).Clear;
+      TD2BridgeForm(TD2BridgeClass(vPrismSession.D2BridgeBaseClassActive).FormAOwner).Render;
  //   end
  // );
 
  
-   TPrismBaseClass(PrismBaseClass).PrismServerHTMLHeaders.LoadPageHTMLFromSession(APrismRequest, APrismReponse, vPrismSession);
+      TPrismBaseClass(PrismBaseClass).PrismServerHTMLHeaders.LoadPageHTMLFromSession(APrismRequest, APrismReponse, vPrismSession);
+     finally
+      PrismBaseClass.HangSpanEnd(vHangTick, vPrismSession.InfoConnection.Identity, '', '', 'GetHTML.Render');
+     end;
   end;
  except
   abort;
