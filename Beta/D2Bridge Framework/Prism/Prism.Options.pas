@@ -75,6 +75,12 @@ type
    FLogException: Boolean;
    FLogSecurity: Boolean;
    FLogAccess: Boolean;
+   FLogHang: Boolean;
+   FResourceMonitor: Boolean;
+   FResourceMonitorIntervalSec: Integer;
+   FResourceMonitorTopProcessCount: Integer;
+   FResourceMonitorCPUAlertPercent: Integer;
+   FResourceMonitorMemoryAlertMB: Integer;
    FPathLogException: string;
    FPathTemp: string;
    FPathTempSessions: string;
@@ -122,6 +128,18 @@ type
    procedure SetLogSecurity(const Value: Boolean);
    function GetLogAccess: Boolean;
    procedure SetLogAccess(const Value: Boolean);
+   function GetLogHang: Boolean;
+   procedure SetLogHang(const Value: Boolean);
+   function GetResourceMonitor: Boolean;
+   procedure SetResourceMonitor(const Value: Boolean);
+   function GetResourceMonitorIntervalSec: Integer;
+   procedure SetResourceMonitorIntervalSec(const Value: Integer);
+   function GetResourceMonitorTopProcessCount: Integer;
+   procedure SetResourceMonitorTopProcessCount(const Value: Integer);
+   function GetResourceMonitorCPUAlertPercent: Integer;
+   procedure SetResourceMonitorCPUAlertPercent(const Value: Integer);
+   function GetResourceMonitorMemoryAlertMB: Integer;
+   procedure SetResourceMonitorMemoryAlertMB(const Value: Integer);
    function GetLogFileMode: TPrismLogFileMode;
    procedure SetLogFileMode(const Value: TPrismLogFileMode);
    procedure SetPathLogException(const Value: string);
@@ -184,6 +202,12 @@ type
    property LogException: Boolean read GetLogException write SetLogException;
    property LogSecurity: Boolean read GetLogSecurity write SetLogSecurity;
    property LogAccess: Boolean read GetLogAccess write SetLogAccess;
+   property LogHang: Boolean read GetLogHang write SetLogHang;
+   property ResourceMonitor: Boolean read GetResourceMonitor write SetResourceMonitor;
+   property ResourceMonitorIntervalSec: Integer read GetResourceMonitorIntervalSec write SetResourceMonitorIntervalSec;
+   property ResourceMonitorTopProcessCount: Integer read GetResourceMonitorTopProcessCount write SetResourceMonitorTopProcessCount;
+   property ResourceMonitorCPUAlertPercent: Integer read GetResourceMonitorCPUAlertPercent write SetResourceMonitorCPUAlertPercent;
+   property ResourceMonitorMemoryAlertMB: Integer read GetResourceMonitorMemoryAlertMB write SetResourceMonitorMemoryAlertMB;
    property LogFileMode: TPrismLogFileMode read GetLogFileMode write SetLogFileMode;
    property PathLogException: string read GetPathLogException write SetPathLogException;
    property CoInitialize: boolean read GetCoInitialize write SetCoInitialize;
@@ -240,6 +264,12 @@ begin
   FShowError500Page:= IsDebuggerPresent;
   FUseMainThread:= true;
   FLogAccess:= false;
+  FLogHang:= false;
+  FResourceMonitor:= false;
+  FResourceMonitorIntervalSec:= 300;
+  FResourceMonitorTopProcessCount:= 3;
+  FResourceMonitorCPUAlertPercent:= 70;
+  FResourceMonitorMemoryAlertMB:= 2048;
   FLogFileMode:= lfmPerSession;
 
   FSessionTimeOut:= TimeWaitTimeOutSession div 1000;
@@ -375,6 +405,36 @@ end;
 function TPrismOptions.GetLogAccess: Boolean;
 begin
  result:= FLogAccess;
+end;
+
+function TPrismOptions.GetLogHang: Boolean;
+begin
+ Result:= FLogHang;
+end;
+
+function TPrismOptions.GetResourceMonitor: Boolean;
+begin
+ Result:= FResourceMonitor;
+end;
+
+function TPrismOptions.GetResourceMonitorIntervalSec: Integer;
+begin
+ Result:= FResourceMonitorIntervalSec;
+end;
+
+function TPrismOptions.GetResourceMonitorTopProcessCount: Integer;
+begin
+ Result:= FResourceMonitorTopProcessCount;
+end;
+
+function TPrismOptions.GetResourceMonitorCPUAlertPercent: Integer;
+begin
+ Result:= FResourceMonitorCPUAlertPercent;
+end;
+
+function TPrismOptions.GetResourceMonitorMemoryAlertMB: Integer;
+begin
+ Result:= FResourceMonitorMemoryAlertMB;
 end;
 
 function TPrismOptions.GetLogException: boolean;
@@ -582,6 +642,36 @@ end;
 procedure TPrismOptions.SetLogAccess(const Value: Boolean);
 begin
  FLogAccess:= Value;
+end;
+
+procedure TPrismOptions.SetLogHang(const Value: Boolean);
+begin
+ FLogHang:= Value;
+end;
+
+procedure TPrismOptions.SetResourceMonitor(const Value: Boolean);
+begin
+ FResourceMonitor:= Value;
+end;
+
+procedure TPrismOptions.SetResourceMonitorIntervalSec(const Value: Integer);
+begin
+ FResourceMonitorIntervalSec:= Value;
+end;
+
+procedure TPrismOptions.SetResourceMonitorTopProcessCount(const Value: Integer);
+begin
+ FResourceMonitorTopProcessCount:= Value;
+end;
+
+procedure TPrismOptions.SetResourceMonitorCPUAlertPercent(const Value: Integer);
+begin
+ FResourceMonitorCPUAlertPercent:= Value;
+end;
+
+procedure TPrismOptions.SetResourceMonitorMemoryAlertMB(const Value: Integer);
+begin
+ FResourceMonitorMemoryAlertMB:= Value;
 end;
 
 procedure TPrismOptions.SetLogException(const Value: Boolean);

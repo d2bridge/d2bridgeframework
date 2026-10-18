@@ -105,6 +105,12 @@ type
   FPrismResourceMonitor: TPrismResourceMonitor;
   FPrismResourceTimer: TPrismTimer;
   FLastResourceMonitorSnapshot: string;
+  FLastHangRequestTick: Int64;
+  FLastHangRequestEvent: string;
+  FLastHangRequestIdentity: string;
+  FLastSessionTimerTick: Int64;
+  FHangOpenCount: Integer;
+  FHangTimerBusy: Boolean;
    FServerUUID: string;
    FSessions: IPrismSessions;
    FPrismTimer: TPrismTimer;
@@ -114,6 +120,7 @@ type
    procedure OnTimerObserver;
   procedure OnResourceMonitorTimer;
   function BuildExceptionResourceLogSuffix: string;
+  function BuildHangSnapshotSuffix: string;
 {$IFDEF D2BRIDGE}
    procedure SupportFileFromRC(AResourceName: string; AFileName: string; APath: string; ASaveFilesonDisk: boolean); overload;
    procedure SupportFileFromRC(AResourceName: string; var AFileContent: string); overload;
@@ -138,6 +145,9 @@ type
    procedure Log(const SessionIdenty, ErrorForm, ErrorObject, ErrorEvent, ErrorMsg: string);
    procedure LogSecurity(const SecEventInfo: TSecuritEventInfo);
    procedure LogAccess(const APrismSessionInfo: IPrismSessionInfo);
+   function HangSpanBegin(const AIdentity, AForm, AComponent, AEvent: string): Int64;
+   procedure HangSpanEnd(AStartedTick: Int64; const AIdentity, AForm, AComponent, AEvent: string);
+   procedure MarkSessionTimerTick;
   function ResourceMonitorSnapshot: string;
   function CurrentAppResourceSnapshot: string;
   published
@@ -193,8 +203,7 @@ implementation
 
 uses
   D2Bridge.Manager, D2Bridge.Forms, D2Bridge.Instance, Prism.Session, Prism.Session.Helper, Prism.Forms, Prism.Util,
-  D2Bridge.Util, D2Bridge.Rest,
-  Prism.Session.Thread.Proc;
+  D2Bridge.Util, D2Bridge.Rest, Prism.Session.Thread.Proc;
 
 var PrismBaseClassInstance: TPrismBaseClass;
 
@@ -914,9 +923,92 @@ end;
 
 procedure TPrismBaseClass.Log(const SessionIdenty, ErrorForm, ErrorObject, ErrorEvent, ErrorMsg: string);
 begin
- if FPrismOptions.LogException then
+ if FPrismOptions.LogException or FPrismOptions.LogHang then
   if Assigned(FPrismLog) then
   FPrismLog.Log(SessionIdenty, ErrorForm, ErrorObject, ErrorEvent, ErrorMsg + BuildExceptionResourceLogSuffix);
+end;
+
+function TPrismBaseClass.HangSpanBegin(const AIdentity, AForm, AComponent, AEvent: string): Int64;
+begin
+ Result:= 0;
+ try
+  if not FPrismOptions.LogHang then
+   Exit;
+  if not Assigned(FPrismLog) then
+   Exit;
+
+  Result:= GetTickCount;
+  FLastHangRequestTick:= Result;
+  FLastHangRequestEvent:= AEvent;
+  FLastHangRequestIdentity:= AIdentity;
+  Inc(FHangOpenCount);
+  FPrismLog.Log(AIdentity, AForm, AComponent, AEvent, 'BEGIN');
+ except
+  Result:= 0;
+ end;
+end;
+
+procedure TPrismBaseClass.HangSpanEnd(AStartedTick: Int64; const AIdentity, AForm, AComponent, AEvent: string);
+var
+ vElapsed: Int64;
+begin
+ try
+  if AStartedTick = 0 then
+   Exit;
+  if not FPrismOptions.LogHang then
+   Exit;
+  if not Assigned(FPrismLog) then
+   Exit;
+
+  if FHangOpenCount > 0 then
+   Dec(FHangOpenCount);
+
+  vElapsed:= GetTickCount - AStartedTick;
+  FPrismLog.Log(AIdentity, AForm, AComponent, AEvent, 'END elapsedMs=' + IntToStr(vElapsed));
+ except
+ end;
+end;
+
+procedure TPrismBaseClass.MarkSessionTimerTick;
+begin
+ try
+  if FPrismOptions.LogHang then
+   FLastSessionTimerTick:= GetTickCount;
+ except
+ end;
+end;
+
+function TPrismBaseClass.BuildHangSnapshotSuffix: string;
+var
+ vAgeSec: Int64;
+begin
+ Result:= '';
+ try
+  Result:= ' | OpenSpans = ' + IntToStr(FHangOpenCount);
+
+  if FLastHangRequestEvent <> '' then
+   Result:= Result + ' | LastRequestEvent = ' + FLastHangRequestEvent;
+  if FLastHangRequestIdentity <> '' then
+   Result:= Result + ' | LastRequestIdenty = ' + FLastHangRequestIdentity;
+
+  if FLastHangRequestTick = 0 then
+   Result:= Result + ' | LastRequestAgeSec = n/a'
+  else
+  begin
+   vAgeSec:= (GetTickCount - FLastHangRequestTick) div 1000;
+   Result:= Result + ' | LastRequestAgeSec = ' + IntToStr(vAgeSec);
+  end;
+
+  if FLastSessionTimerTick = 0 then
+   Result:= Result + ' | LastSessionTimerAgeSec = n/a'
+  else
+  begin
+   vAgeSec:= (GetTickCount - FLastSessionTimerTick) div 1000;
+   Result:= Result + ' | LastSessionTimerAgeSec = ' + IntToStr(vAgeSec);
+  end;
+ except
+  Result:= '';
+ end;
 end;
 
 function TPrismBaseClass.BuildExceptionResourceLogSuffix: string;
@@ -1064,8 +1156,16 @@ end;
     if not Assigned(FPrismLog) then
       Exit;
 
+    if FHangTimerBusy then
+      Exit;
+
+    FHangTimerBusy := True;
     try
       vMessage := FPrismResourceMonitor.BuildSnapshotLog(Sessions.Count);
+
+      if FPrismOptions.LogHang then
+        vMessage := vMessage + BuildHangSnapshotSuffix;
+
       if vMessage <> '' then
       begin
         FLastResourceMonitorSnapshot := vMessage;
@@ -1073,6 +1173,7 @@ end;
       end;
     except
     end;
+    FHangTimerBusy := False;
   end;
 
   function TPrismBaseClass.ResourceMonitorSnapshot: string;
@@ -1217,42 +1318,39 @@ begin
     ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Server Config', 'Server Port', ServerPort);
     ServerController.APPConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Name', ServerController.ServerName);
     ServerController.APPConfig.FileINIConfig.WriteString('D2Bridge Server Config', 'Server Description', ServerController.ServerName);
-    if not ServerController.APPConfig.FileINIConfig.ValueExists('D2Bridge Log', 'ResourceMonitor') then
-      ServerController.APPConfig.FileINIConfig.WriteBool('D2Bridge Log', 'ResourceMonitor', False);
-
-    if not ServerController.APPConfig.FileINIConfig.ValueExists('D2Bridge Log', 'ResourceMonitorIntervalSec') then
-      ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Log', 'ResourceMonitorIntervalSec', 300);
-
-    if not ServerController.APPConfig.FileINIConfig.ValueExists('D2Bridge Log', 'ResourceMonitorTopProcessCount') then
-      ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Log', 'ResourceMonitorTopProcessCount', 3);
-
-    if not ServerController.APPConfig.FileINIConfig.ValueExists('D2Bridge Log', 'ResourceMonitorCPUAlertPercent') then
-      ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Log', 'ResourceMonitorCPUAlertPercent', 70);
-
-    if not ServerController.APPConfig.FileINIConfig.ValueExists('D2Bridge Log', 'ResourceMonitorMemoryAlertMB') then
-      ServerController.APPConfig.FileINIConfig.WriteInteger('D2Bridge Log', 'ResourceMonitorMemoryAlertMB', 2048);
-
-    if SameText(ServerController.APPConfig.FileINIConfig.ReadString('D2Bridge Log', 'LogFileMode', 'session'), 'daily') then
-     FPrismOptions.LogFileMode:= lfmDaily;
-
-    FPrismResourceMonitor.Configure(
-      ServerController.APPConfig.FileINIConfig.ReadBool('D2Bridge Log', 'ResourceMonitor', False),
-      ServerController.APPConfig.FileINIConfig.ReadInteger('D2Bridge Log', 'ResourceMonitorIntervalSec', 300),
-      ServerController.APPConfig.FileINIConfig.ReadInteger('D2Bridge Log', 'ResourceMonitorTopProcessCount', 3),
-      ServerController.APPConfig.FileINIConfig.ReadInteger('D2Bridge Log', 'ResourceMonitorCPUAlertPercent', 70),
-      ServerController.APPConfig.FileINIConfig.ReadInteger('D2Bridge Log', 'ResourceMonitorMemoryAlertMB', 2048));
    end;
   {$ENDREGION}
+
+  FPrismResourceMonitor.Configure(
+    FPrismOptions.ResourceMonitor,
+    FPrismOptions.ResourceMonitorIntervalSec,
+    FPrismOptions.ResourceMonitorTopProcessCount,
+    FPrismOptions.ResourceMonitorCPUAlertPercent,
+    FPrismOptions.ResourceMonitorMemoryAlertMB);
 
   FPrismThreadServerTCP.Port:= ServerPort;
 
   if (FPrismOptions.LogException) or (FPrismOptions.LogSecurity) or (FPrismOptions.LogAccess) or
+     (FPrismOptions.LogHang) or
      (Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled) then
    FPrismLog:= TPrismLog.Create(FPrismOptions.LogFile, FPrismOptions.LogFileMode = lfmDaily);
+
+  if FPrismOptions.LogHang then
+  begin
+   FLastHangRequestTick:= 0;
+   FLastHangRequestEvent:= '';
+   FLastHangRequestIdentity:= '';
+   FLastSessionTimerTick:= 0;
+   FHangOpenCount:= 0;
+   FHangTimerBusy:= False;
+  end;
 
   if Assigned(FPrismLog) and Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled then
     FPrismLog.LogDiagnostic('ResourceMonitor', 'Bootstrap | LogFile=' + FPrismOptions.LogFile +
       ' | IntervalSec=' + IntToStr(FPrismResourceMonitor.IntervalMilliseconds div 1000));
+
+  if Assigned(FPrismLog) and FPrismOptions.LogHang then
+    FPrismLog.LogDiagnostic('Hang', 'Bootstrap | LogHang=True');
 
   if SameText(ExcludeTrailingPathDelimiter(Options.RootDirectory), ExcludeTrailingPathDelimiter(LDefaultRootDirectory)) then
    Options.RootDirectory:= IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0)) + Options.RootDirectory));
@@ -1310,16 +1408,27 @@ begin
   except
   end;
 
-  if Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled then
+  if (Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled) or FPrismOptions.LogHang then
   begin
     try
-      FLastResourceMonitorSnapshot := FPrismResourceMonitor.BuildSnapshotLog(Sessions.Count);
+      if Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled then
+        FLastResourceMonitorSnapshot := FPrismResourceMonitor.BuildSnapshotLog(Sessions.Count)
+      else
+        FLastResourceMonitorSnapshot := '';
+
+      if FPrismOptions.LogHang then
+        FLastResourceMonitorSnapshot := FLastResourceMonitorSnapshot + BuildHangSnapshotSuffix;
     except
       FLastResourceMonitorSnapshot := '';
     end;
 
     if not Assigned(FPrismResourceTimer) then
-      FPrismResourceTimer := TPrismTimer.Create(FPrismResourceMonitor.IntervalMilliseconds, OnResourceMonitorTimer);
+    begin
+      if Assigned(FPrismResourceMonitor) and FPrismResourceMonitor.Enabled then
+        FPrismResourceTimer := TPrismTimer.Create(FPrismResourceMonitor.IntervalMilliseconds, OnResourceMonitorTimer)
+      else
+        FPrismResourceTimer := TPrismTimer.Create(60000, OnResourceMonitorTimer);
+    end;
 
     FPrismResourceTimer.Resume;
   end;
