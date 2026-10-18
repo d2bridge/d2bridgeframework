@@ -134,7 +134,7 @@ uses
 procedure TPrismStringGrid.CellPostbyJSON(AJSON: string; out ARowID: string; out AErrorMessage: string);
 var
  vJSONCellValues: TJSONObject;
- I, J: Integer;
+ I, J, N: Integer;
  vRecNO: integer;
  vAlter: Boolean;
  vOperation: String;
@@ -274,7 +274,7 @@ var
  JSONItemColumnOptions: TJSONObject;
  vItemColumnClasses: TStrings;
  ResultColJSON: String;
- I, J: Integer;
+ I, J, N: Integer;
  vFatorWidth: Double;
  LookupRecNo: integer;
  vColumnIndex: Integer;
@@ -341,7 +341,14 @@ begin
 
       vItemColumnClasses.Add('celleditable');
 
-      JSONItemColumn.RemovePair('width').Free;
+
+      {$IFNDEF FPC}
+       JSONItemColumn.RemovePair('width').Free;
+      {$ELSE}
+         N := JSONItemColumn.IndexOfName('width');
+         if N >= 0 then
+           JSONItemColumn.Delete(N);
+      {$ENDIF }
       JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width + vWidthEditCell) * vFatorWidth)));
 
 //      //Lookup Combobox Desativado para StringGrid - Alterar
@@ -398,7 +405,14 @@ begin
        JSONItemColumnOptions.AddPair('style', 'width: 100%;box-sizing: border-box;');
 
        //Adjust Select ICON
+       {$IFNDEF FPC}
        JSONItemColumn.RemovePair('width').Free;
+       {$ELSE}
+         N := JSONItemColumn.IndexOfName('width');
+         if N >= 0 then
+           JSONItemColumn.Delete(N);
+       {$ENDIF }
+
        JSONItemColumn.AddPair('width', TJSONIntegerNumber.Create(Round((Columns.Items[I].Width+vWidthIconSelect) * vFatorWidth)));
       end else
        JSONItemColumn.AddPair('edittype', 'text');
