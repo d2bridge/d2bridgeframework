@@ -1,4 +1,5 @@
-﻿﻿{
+﻿unit D2Bridge.Manager;
+ {
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
@@ -30,7 +31,6 @@
 
 {$I D2Bridge.inc}
 
-unit D2Bridge.Manager;
 
 interface
 

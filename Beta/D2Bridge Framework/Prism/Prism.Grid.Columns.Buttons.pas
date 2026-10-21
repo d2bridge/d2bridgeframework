@@ -44,6 +44,7 @@ type
  TPrismGridColumnButton = class(TInterfacedPersistent, IPrismGridColumnButton)
   private
    FCaption: string;
+   FHint: string;
    FCSS: string;
    FButtonType: string;
    FButtonIcon: string;
@@ -61,6 +62,8 @@ type
    FVisible: Boolean;
    function GetCaption: string;
    procedure SetCaption(const Value: string);
+   function GetHint: string;
+   procedure SetHint(const Value: string);
    function GetEnabled: boolean;
    procedure SetEnabled(const Value: boolean);
    function GetVisible: boolean;
@@ -98,6 +101,7 @@ type
    property Enabled: boolean read GetEnabled write SetEnabled;
    property Visible: boolean read GetVisible write SetVisible;
    property Caption: string read GetCaption write SetCaption;
+   property Hint: string read GetHint write SetHint;
    property Identify: string read GetIdentify write SetIdentify;
    property OnClick: TNotifyEvent read GetOnClick write SetOnClick;
    property ClickProc: TProc read GetProc write SetProc;
@@ -279,6 +283,15 @@ begin
  Result:= FVisible;
 end;
 
+function HtmlTitleAttr(const AText: string): string;
+begin
+ Result:= AText;
+ Result:= StringReplace(Result, '&', '&amp;', [rfReplaceAll]);
+ Result:= StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+ Result:= StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+ Result:= StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+end;
+
 function TPrismGridColumnButton.MakeHTML: string;
 var
  vCSSList: TStrings;
@@ -335,11 +348,14 @@ begin
  result:= result +
   ' disabled';
  // Hint / tooltip nativo do browser
+ if Trim(FHint) <> '' then
+  result:= result + ' title="' + HtmlTitleAttr(FHint) + '"'
+ else
  if Assigned(FButtonModel) and (Trim(FButtonModel.Hint) <> '') then
-  result:= result + ' title="' + StringReplace(FButtonModel.Hint, '"', '&quot;', [rfReplaceAll]) + '"'
+  result:= result + ' title="' + HtmlTitleAttr(FButtonModel.Hint) + '"'
  else
  if Trim(Caption) <> '' then
-  result:= result + ' title="' + StringReplace(Caption, '"', '&quot;', [rfReplaceAll]) + '"';
+  result:= result + ' title="' + HtmlTitleAttr(Caption) + '"';
  result:= result +
   ' style="">';
 
@@ -356,12 +372,14 @@ begin
   if Buttons[I].CSSButtonIcon <> '' then
    result:= result + '<li>' +
      '<a recno="${recNo}" id="' + Buttons[I].ElementID + '" class="d2bridgedropdownmenuitem dropdown-item"' +
+     IfThen(Trim(Buttons[I].Hint) <> '', ' title="' + HtmlTitleAttr(Buttons[I].Hint) + '"') +
      ' onclick="' + AnsiUpperCase(FPrismGridColumn.PrismGrid.NamePrefix) + '_CellButtonClick('+ IntToStr(FPrismGridColumn.ColumnIndex) +',this)' + '">' +
      '<i class="' + Buttons[I].CSSButtonIcon + ' me-2" aria-hidden="true"></i>' +
      Buttons[I].Caption + '</a></li>'
   else
    result:= result + '<li>'+
      '<a recno="${recNo}" id="' + Buttons[I].ElementID + '" class="d2bridgedropdownmenuitem dropdown-item"'+
+     IfThen(Trim(Buttons[I].Hint) <> '', ' title="' + HtmlTitleAttr(Buttons[I].Hint) + '"') +
      ' onclick="' + AnsiUpperCase(FPrismGridColumn.PrismGrid.NamePrefix) + '_CellButtonClick('+ IntToStr(FPrismGridColumn.ColumnIndex) +',this)' + '">' +
      Buttons[I].Caption + '</a></li>';
 
@@ -429,6 +447,16 @@ end;
 procedure TPrismGridColumnButton.SetCaption(const Value: string);
 begin
  FCaption:= Value;
+end;
+
+function TPrismGridColumnButton.GetHint: string;
+begin
+ Result:= FHint;
+end;
+
+procedure TPrismGridColumnButton.SetHint(const Value: string);
+begin
+ FHint:= Value;
 end;
 
 procedure TPrismGridColumnButton.SetCSS(const Value: string);

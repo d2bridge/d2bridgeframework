@@ -1349,6 +1349,8 @@ type
   ['{E771DE49-FCAF-4BE5-B002-A519D85944DE}']
    function GetCaption: string;
    procedure SetCaption(const Value: string);
+   function GetHint: string;
+   procedure SetHint(const Value: string);
    function GetEnabled: boolean;
    procedure SetEnabled(const Value: boolean);
    function GetVisible: boolean;
@@ -1384,6 +1386,7 @@ type
    property Enabled: boolean read GetEnabled write SetEnabled;
    property Visible: boolean read GetVisible write SetVisible;
    property Caption: string read GetCaption write SetCaption;
+   property Hint: string read GetHint write SetHint;
    property Identify: string read GetIdentify write SetIdentify;
    property CSS: string read GetCSS write SetCSS;
    property CSSButtonType: string read GetButtonType write SetButtonType;
