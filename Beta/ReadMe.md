@@ -120,7 +120,6 @@ For consultancy or paid support contact https://www.d2bridge.com.br or email: ta
 - DBGrid rendering with events by Columns/Rows
 - Screen Drawing (Paint)
 - Vertical Grid for mobile devices
-- Location Service
 - Handle browser back button
 - D2Bridge Framework Studio (drag and drop IDE for exporting Form controls)
 - Compile on Linux with Lazarus

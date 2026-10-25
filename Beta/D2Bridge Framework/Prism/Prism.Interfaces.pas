@@ -102,6 +102,7 @@ type
   IPrismHTMLElement = interface;
   IPrismLink = interface;
   IPrismQRCode = interface;
+  IPrismMap = interface;
   IPrismCarousel = interface;
   IPrismTabs = interface;
   IPrismCarouselItem = interface;
@@ -310,6 +311,7 @@ type
    function AsQRCodeReader: IPrismQRCodeReader;
    function AsBadge: IPrismBadge;
    function AsChart: IPrismChartBase;
+   function AsMap: IPrismMap;
 
    //**IS** PrismControls
    function IsButton: Boolean;
@@ -354,6 +356,7 @@ type
    function IsQRCodeReader: Boolean;
    function IsBadge: boolean;
    function IsChart: boolean;
+   function IsMap: boolean;
 
    function NeedCheckValidation: Boolean;
    function Lang: TD2BridgeTerm;
@@ -564,6 +567,45 @@ type
    property Size: integer read GetSize write SetSize;
    property ColorCode: string read GetColorCode write SetColorCode;
    property ColorBackground: string read GetColorBackground write SetColorBackground;
+ end;
+
+
+ IPrismMap = interface(IPrismControl)
+  ['{8C4A1E2B-7F63-4D91-A0C5-6B9E2D4F1A73}']
+   function GetLatitude: Double;
+   procedure SetLatitude(const Value: Double);
+   function GetLongitude: Double;
+   procedure SetLongitude(const Value: Double);
+   function GetZoom: Integer;
+   procedure SetZoom(const Value: Integer);
+   function GetHeight: Integer;
+   procedure SetHeight(const Value: Integer);
+   function GetRequestLocation: Boolean;
+   procedure SetRequestLocation(const Value: Boolean);
+   function GetDistanceKm: Double;
+   function GetLocationError: string;
+   function GetOnLocation: TNotifyEvent;
+   procedure SetOnLocation(const Value: TNotifyEvent);
+   function GetHasRoute: Boolean;
+   function GetDestLatitude: Double;
+   function GetDestLongitude: Double;
+
+   procedure SetMarker(ALatitude, ALongitude: Double);
+   procedure Route(ALatitude, ALongitude: Double);
+   procedure LockOrigin;
+   procedure ClearRoute;
+
+   property Latitude: Double read GetLatitude write SetLatitude;
+   property Longitude: Double read GetLongitude write SetLongitude;
+   property Zoom: Integer read GetZoom write SetZoom;
+   property Height: Integer read GetHeight write SetHeight;
+   property RequestLocation: Boolean read GetRequestLocation write SetRequestLocation;
+   property DistanceKm: Double read GetDistanceKm;
+   property LocationError: string read GetLocationError;
+   property OnLocation: TNotifyEvent read GetOnLocation write SetOnLocation;
+   property HasRoute: Boolean read GetHasRoute;
+   property DestLatitude: Double read GetDestLatitude;
+   property DestLongitude: Double read GetDestLongitude;
  end;
 
 

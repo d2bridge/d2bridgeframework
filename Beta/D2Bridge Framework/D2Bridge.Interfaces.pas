@@ -1545,6 +1545,13 @@ end;
  end;
 
 
+ ID2BridgeItemHTMLMap = interface(ID2BridgeItem)
+  ['{B7E2C4A1-5D18-4F6A-9C30-2A8E6F1D4B95}']
+
+   function PrismMap: IPrismMap;
+ end;
+
+
  ID2BridgeItemHTMLCarousel = interface(ID2BridgeItem)
   ['{4D5299E8-6B66-4281-9093-3C31CAFF3035}']
 {$IFNDEF FMX}
@@ -2027,6 +2034,7 @@ end;
    function Carousel(ADataSource: TDataSource; ADataFieldImagePath: string; AItemID: string = ''; AAutoSlide: boolean = true; AInterval: integer = 4000; AShowIndicator: boolean = true; AShowButtons: boolean = true; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLCarousel; overload;
 {$ENDIF}
    function QRCode(AText: string = ''; AItemID: string = ''; ASize: integer = 128; AColor: string = 'black'; ABackgroudColor: string = 'white'; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLQRCode; overload;
+   function Map(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLMap;
 {$IFNDEF FMX}
    function QRCode(ADataSource: TDataSource; ADataField: string; AItemID: string = ''; ASize: integer = 128; AColor: string = 'black'; ABackgroudColor: string = 'white'; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLQRCode; overload;
 {$ENDIF}

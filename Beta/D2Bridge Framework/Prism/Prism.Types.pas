@@ -52,7 +52,8 @@ type
                     EventOnDragStart, EventOnDragEnd,
                     EventOnLoad, EventOnUnload,
                     EventOnRead, EventOnWrite, EventOnError,
-                    EventOnPrismControlEvent);
+                    EventOnPrismControlEvent,
+                    EventOnMapLocation);
 
  TPrismWebMethod = (wmtGET, wmtPOST, wmtPUT, wmtDELETE, wmtPATCH, wmtHEAD);
 

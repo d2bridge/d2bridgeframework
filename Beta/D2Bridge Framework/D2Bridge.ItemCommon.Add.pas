@@ -106,6 +106,7 @@ type
    function Carousel(ADataSource: TDataSource; ADataFieldImagePath: string; AItemID: string = ''; AAutoSlide: boolean = true; AInterval: integer = 4000; AShowIndicator: boolean = true; AShowButtons: boolean = true; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLCarousel; overload;
 {$ENDIF}
    function QRCode(AText: string = ''; AItemID: string = ''; ASize: integer = 128; AColorCode: string = 'black'; AColorBackgroud: string = 'white'; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLQRCode; overload;
+   function Map(AItemID: string = ''; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLMap;
 {$IFNDEF FMX}
    function QRCode(ADataSource: TDataSource; ADataField: string; AItemID: string = ''; ASize: integer = 128; AColorCode: string = 'black'; AColorBackgroud: string = 'white'; ACSSClass: String = ''; AHTMLExtras: String = ''; AHTMLStyle: String = ''): ID2BridgeItemHTMLQRCode; overload;
 {$ENDIF}
@@ -193,7 +194,7 @@ uses
   D2Bridge.Item.HTMLElement, D2Bridge.Item.HTML.Link, D2Bridge.Item.HTML.Carousel, D2Bridge.Item.HTML.QRCode,
   D2Bridge.Item.HTML.MainMenu, D2Bridge.Item.HTML.SideMenu, D2Bridge.Item.HTML.Image, D2Bridge.Item.HTML.DBImage,
   D2Bridge.Item.HTML.Kanban, D2Bridge.Item.HTML.Editor.MarkDown, D2Bridge.Item.HTML.Editor.WYSIWYG,
-  D2Bridge.Item.HTML.Camera, D2Bridge.Item.HTML.QRCodeReader,
+  D2Bridge.Item.HTML.Camera, D2Bridge.Item.HTML.QRCodeReader, D2Bridge.Item.HTML.Map,
   D2Bridge.Item.HTML.Badge.Text, D2Bridge.Item.HTML.Badge.Button;
 
 { TItemsAdd }
@@ -949,6 +950,22 @@ begin
  Result.PrismQRCode.ColorCode:= AColorCode;
  Result.PrismQRCode.ColorBackground:= AColorBackgroud;
  Result.PrismQRCode.Size:= ASize;
+ Result.CSSClasses:= ACSSClass;
+ Result.HTMLExtras:= AHTMLExtras;
+ Result.HTMLStyle:= AHTMLStyle;
+
+ FD2BridgeItems.Add(Result);
+end;
+
+function TItemAdd.Map(AItemID, ACSSClass, AHTMLExtras, AHTMLStyle: String): ID2BridgeItemHTMLMap;
+begin
+ Result:= TD2BridgeItemHTMLMap.Create(TD2BridgeClass(FBaseClass));
+
+ if AItemID = '' then
+  Result.ItemID:= TD2BridgeClass(FBaseClass).CreateItemID('Map')
+ else
+  Result.ItemID:= AItemID;
+
  Result.CSSClasses:= ACSSClass;
  Result.HTMLExtras:= AHTMLExtras;
  Result.HTMLStyle:= AHTMLStyle;
