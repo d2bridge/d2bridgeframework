@@ -36,3 +36,12 @@ Beta/Demos/Lazarus/web/Config.ini
 /Beta/D2Bridge Framework/backup
 Stable/Demos/Lazarus/web/Lazarus.dbg
 Stable/Demos/Lazarus/web/Lazarus.exe
+Beta/Demos/Maps/Maps.exe
+Beta/Demos/Maps/Config.ini
+/Beta/Demos/Maps/lib
+/Beta/Demos/Maps/backup
+/Beta/Demos/Maps/dcu
+/Beta/Demos/Maps/wwwroot
+Beta/Demos/Maps/web/MapDemo.exe
+Beta/Demos/Maps/web/Config.ini
+/Beta/Demos/Maps/web/wwwroot

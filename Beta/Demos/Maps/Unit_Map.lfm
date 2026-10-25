@@ -1,0 +1,76 @@
+object FormMap: TFormMap
+  Left = 0
+  Height = 280
+  Top = 0
+  Width = 720
+  Caption = 'Map'
+  ClientHeight = 280
+  ClientWidth = 720
+  OnCreate = FormCreate
+  object LabelLatitude: TLabel
+    Left = 16
+    Height = 15
+    Top = 16
+    Width = 45
+    Caption = 'Latitude'
+  end
+  object LabelLongitude: TLabel
+    Left = 192
+    Height = 15
+    Top = 16
+    Width = 56
+    Caption = 'Longitude'
+  end
+  object EditLatitude: TEdit
+    Left = 16
+    Height = 23
+    Top = 36
+    Width = 160
+    TabOrder = 0
+    Text = '-21.176700'
+  end
+  object EditLongitude: TEdit
+    Left = 192
+    Height = 23
+    Top = 36
+    Width = 160
+    TabOrder = 1
+    Text = '-47.820800'
+  end
+  object BtnMarkPoint: TButton
+    Left = 368
+    Height = 25
+    Top = 34
+    Width = 100
+    Caption = 'Mark point'
+    TabOrder = 2
+    OnClick = BtnMarkPointClick
+  end
+  object BtnClear: TButton
+    Left = 476
+    Height = 25
+    Top = 34
+    Width = 100
+    Caption = 'Clear points'
+    TabOrder = 3
+    OnClick = BtnClearClick
+  end
+  object BtnMyLocation: TButton
+    Left = 584
+    Height = 25
+    Top = 34
+    Width = 130
+    Caption = 'Return to location'
+    TabOrder = 4
+    OnClick = BtnMyLocationClick
+  end
+  object MemoResult: TMemo
+    Left = 16
+    Height = 170
+    Top = 80
+    Width = 678
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 5
+  end
+end

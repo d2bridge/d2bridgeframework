@@ -177,6 +177,7 @@ type
    function AsQRCodeReader: IPrismQRCodeReader;
    function AsBadge: IPrismBadge;
    function AsChart: IPrismChartBase;
+   function AsMap: IPrismMap;
 
    //**IS** PrismControls
    function IsButton: Boolean; virtual;
@@ -221,6 +222,7 @@ type
    function IsQRCodeReader: boolean; virtual;
    function IsBadge: boolean; virtual;
    function IsChart: boolean; virtual;
+   function IsMap: boolean; virtual;
 
 
    function NeedCheckValidation: Boolean; virtual;
@@ -342,6 +344,11 @@ end;
 function TPrismControl.AsChart: IPrismChartBase;
 begin
  result:= self as IPrismChartBase;
+end;
+
+function TPrismControl.AsMap: IPrismMap;
+begin
+ result:= self as IPrismMap;
 end;
 
 function TPrismControl.AsCheckBox: IPrismCheckBox;
@@ -855,6 +862,11 @@ begin
 end;
 
 function TPrismControl.IsChart: boolean;
+begin
+ result:= false;
+end;
+
+function TPrismControl.IsMap: boolean;
 begin
  result:= false;
 end;

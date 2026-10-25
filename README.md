@@ -31,7 +31,7 @@ This Framework was designed to compile your Delphi project on the Web, all proce
 ---
 
 ## 📦 Versions
-- **Beta:** D2Bridge Framework 2.5.88  
+- **Beta:** D2Bridge Framework 2.5.89  
 - **Stable:** D2Bridge Framework 2.5.78  
 - **License:** LGPL 2.1  
 
@@ -142,7 +142,6 @@ Use the **Discord channel** for community support.
 - DBGrid rendering with column/row events
 - Screen drawing (Paint)
 - Vertical grid for mobile devices
-- Location service
 - Handle browser back button
 - D2Bridge Framework Studio (drag‑and‑drop IDE for exporting Form controls)
 - Native PWA support
