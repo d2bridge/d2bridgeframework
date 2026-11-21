@@ -1,4 +1,4 @@
-{
+﻿{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
@@ -41,8 +41,12 @@ interface
 
 {$IFNDEF FPC}
 uses
+{$IFDEF USE_MORMOT2}
+  mormot.core.base, mormot.net.sock, mormot.net.client,
+{$ELSE}
   IdHTTP,
   IdSSLOpenSSL,
+{$ENDIF}
   StrUtils,
   Classes, SysUtils, System.UITypes, D2Bridge.JSON,
   Rest.Utils, System.Net.HttpClient, System.Net.HttpClientComponent,System.Net.URLClient,System.NetEncoding,
@@ -60,8 +64,8 @@ type
   TD2BridgeAPIStorageAmazonS3 = class(TInterfacedPersistent, ID2BridgeAPIStorageAmazonS3)
    private
 
-    FIdHTTP: TIdHTTP;
-    FIdSSL: TIdSSLIOHandlerSocketOpenSSL;
+    FIdHTTP: {$IFDEF USE_MORMOT2}THttpClientSocket{$ELSE}TIdHTTP{$ENDIF};
+    FIdSSL: {$IFDEF USE_MORMOT2}TNetTlsContext{$ELSE}TIdSSLIOHandlerSocketOpenSSL{$ENDIF};
     FDataStream: TStringStream;
     FResponseJSON,
     FKeyJSON: TJSONObject;

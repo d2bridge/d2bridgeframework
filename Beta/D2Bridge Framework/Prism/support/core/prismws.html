@@ -39,7 +39,7 @@ function startPrismServer() {
         connectionInfo.protocol = "ws";
     }
 
-    prismws = new WebSocket(connectionInfo.protocol + '://' + hostws + connectionInfo.pathPrefix + '/websocket' + '/connectionparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
+    prismws = new WebSocket(connectionInfo.protocol + '://' + hostws + connectionInfo.pathPrefix + '/websocket' + '/connectionparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()), 'd2bridge');
 
     prismws.addEventListener('open', function(event) {
         prismwsconnected = true;
@@ -88,6 +88,8 @@ function startPrismServer() {
                             } else
                             if (response.status === 200) {
                                 location.reload(true);
+                            } else {
+                                setTimeout(checkSiteStatus, 1000);
                             }
 
                         })

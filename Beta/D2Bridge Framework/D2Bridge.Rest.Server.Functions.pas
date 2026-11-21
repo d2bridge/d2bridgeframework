@@ -94,8 +94,8 @@ function D2BridgeServerController: ID2BridgeServerControllerBase;
 implementation
 
 Uses
- D2Bridge.Rest.Server,
- Prism.BaseClass, IdGlobal;
+  D2Bridge.Rest.Server,
+  Prism.BaseClass{$IFNDEF USE_MORMOT2}, IdGlobal{$ENDIF};
 
 
 {$I D2Bridge.Rest.Commom.Impl.inc}

@@ -324,9 +324,16 @@ begin
 
    vFileStream:= TFileStream.Create(AFileName, fmCreate);
 
-   IOHandler.ReadBytes(TIDBytes(vBodyContent), vContentLength);
+   {$IFDEF USE_MORMOT2}
+      // In mORMot2, Content is already available; convert string to bytes
+      vBodyContent := TEncoding.UTF8.GetBytes(Content);
+      if Length(vBodyContent) >= vContentLength then
+       vFileStream.Write(vBodyContent[0], vContentLength);
+   {$ELSE}
+      IOHandler.ReadBytes(TIDBytes(vBodyContent), vContentLength);
+      vFileStream.WriteBuffer(vBodyContent[0], vContentLength);
+   {$ENDIF}
 
-   vFileStream.WriteBuffer(vBodyContent[0], vContentLength);
    vFileStream.Position := 0;
    vFileStream.Free;
   end;

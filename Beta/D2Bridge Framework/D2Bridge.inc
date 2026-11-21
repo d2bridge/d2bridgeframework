@@ -35,6 +35,9 @@ This file is divided into two parts: Configurations and Implementation
 
 (*//////////////// SETTINGS  ////////////////////*)
 
+// To use mORMot2 instead of Indy as the HTTP/WebSocket engine, uncomment this line
+//{$DEFINE USE_MORMOT2}
+
 // To use the TMS Software Components, uncomment this line
 // Component not implemented
 //{$DEFINE TMSSOFTWARE_AVAILABLE}

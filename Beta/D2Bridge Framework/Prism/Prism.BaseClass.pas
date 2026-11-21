@@ -54,7 +54,11 @@ uses
 {$ELSE}
   Forms,
 {$ENDIF}
+{$IFDEF USE_MORMOT2}
+  mormot.core.base, Prism.MormotCompat,
+{$ELSE}
   IdGlobal, IdSSLOpenSSL,
+{$ENDIF}
   Prism.Server.HTML.Headers, Prism.Session.Event, Prism.Types, Prism.Log, Prism.Server.Thread.TCP,
   Prism.Server.TCP, Prism.Server.HTTP.Commom,
   {$IFDEF D2BRIDGE}Prism.Server.HTML,{$ENDIF}
@@ -154,7 +158,7 @@ type
    function Started: boolean;
    procedure StartServer;
    procedure StopServer;
-   function SSLOptions: TIdSSLOptions;
+    function SSLOptions: {$IFDEF USE_MORMOT2}TMormotTlsConfig{$ELSE}TIdSSLOptions{$ENDIF};
    function ServerUUID: string;
 
    function Sessions: IPrismSessions;
@@ -1292,7 +1296,7 @@ begin
  FPrismThreadServerTCP.Port:= APort;
 end;
 
-function TPrismBaseClass.SSLOptions: TIdSSLOptions;
+function TPrismBaseClass.SSLOptions: {$IFDEF USE_MORMOT2}TMormotTlsConfig{$ELSE}TIdSSLOptions{$ENDIF};
 begin
  result:= FPrismThreadServerTCP.SSLOptions;
 end;

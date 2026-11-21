@@ -39,7 +39,14 @@ uses
 {$IFDEF HAS_UNIT_SYSTEM_THREADING}
   System.Threading,
 {$ENDIF}
+{$IFDEF USE_MORMOT2}
+  mormot.core.base, mormot.core.unicode, mormot.core.text, mormot.core.buffers,
+  mormot.core.os,
+  mormot.net.client,
+  Prism.MormotCompat,
+{$ELSE}
   IdSMTP, IdSSLOpenSSL, IdMessage, IdExplicitTLSClientServerBase, IdAttachmentFile, IdText,
+{$ENDIF}
   D2Bridge.Interfaces, Prism.Server.HTTP.Commom
 {$IFDEF FMX}
 
@@ -174,6 +181,118 @@ begin
  inherited;
 end;
 
+{$IFDEF USE_MORMOT2}
+procedure TD2BridgeAPIMail.Exec_SendMail;
+var
+  I: integer;
+  ServerCfg: TSmtpConnection;
+  FromAddr, CsvDest, SubjectEncoded: RawUtf8;
+  MimeBody, Boundary, MimeText: RawByteString;
+  AttachmentFile: RawByteString;
+  AttachmentContent: RawByteString;
+  AttachmentName: RawUTF8;
+  vAddress: ID2BridgeAPIMailAddress;
+  UseTLS: boolean;
+  lSmtpTls :  TSmtpTls;
+begin
+  // Build destination list
+  CsvDest := '';
+  for vAddress in FAdresses.Items do
+  begin
+    if CsvDest <> '' then
+      CsvDest := CsvDest + ', ';
+    CsvDest := CsvDest + StringToUtf8(vAddress.MailAddress);
+  end;
+
+  // Encode subject for Unicode
+  SubjectEncoded := SendEmailSubject(FSubject);
+
+  // Prepare server connection config
+  ServerCfg.Host := StringToUtf8(Config.Host);
+  ServerCfg.Port := StringToUtf8(IntToStr(Config.Port));
+  ServerCfg.User := StringToUtf8(Config.UserName);
+  ServerCfg.Pass := StringToUtf8(Config.Password);
+
+  // Build multipart MIME body
+  Boundary := '--D2Bridge_' + Int64ToUtf8(GetTickCount64);
+  MimeBody := '';
+
+  if BodyText.Text <> '' then
+  begin
+    MimeBody := MimeBody + #13#10'--' + Boundary + #13#10;
+    MimeBody := MimeBody + 'Content-Type: text/plain; charset=UTF-8' + #13#10;
+    MimeBody := MimeBody + 'Content-Transfer-Encoding: 8bit' + #13#10#13#10;
+    MimeBody := MimeBody + StringToUTF8(BodyText.Text);
+  end;
+
+  if BodyHTML.Text <> '' then
+  begin
+    MimeBody := MimeBody + #13#10'--' + Boundary + #13#10;
+    MimeBody := MimeBody + 'Content-Type: text/html; charset=UTF-8' + #13#10;
+    MimeBody := MimeBody + 'Content-Transfer-Encoding: 8bit' + #13#10#13#10;
+    MimeBody := MimeBody + StringToUTF8(BodyHTML.Text);
+  end;
+
+  // Attachments (base64 encoded)
+  for I := 0 to Pred(Attachment.Count) do
+  begin
+    if FileExists(Attachment[I]) then
+    begin
+      AttachmentName := StringToUTF8(ExtractFileName(Attachment[I]));
+      AttachmentFile := StringFromFile(Attachment[I]);
+      AttachmentContent := BinToBase64(AttachmentFile);
+      MimeBody := MimeBody + #13#10'--' + Boundary + #13#10;
+      MimeBody := MimeBody + 'Content-Type: ' + StringToUTF8(FMimesType.GetMimeType(string(AttachmentName))) + ';' + #13#10;
+      MimeBody := MimeBody + '  name="' + AttachmentName + '"' + #13#10;
+      MimeBody := MimeBody + 'Content-Disposition: attachment;' + #13#10;
+      MimeBody := MimeBody + '  filename="' + AttachmentName + '"' + #13#10;
+      MimeBody := MimeBody + 'Content-Transfer-Encoding: base64' + #13#10#13#10;
+      MimeBody := MimeBody + AttachmentContent;
+    end;
+  end;
+
+  // Add closing boundary only if we added content
+  if MimeBody <> '' then
+    MimeBody := MimeBody + #13#10'--' + Boundary + '--' + #13#10;
+
+  // Build final headers
+  FromAddr := StringToUTF8(FFrom.MailAddress);
+  if FFrom.Name <> '' then
+    FromAddr := StringToUTF8('"' + FFrom.Name + '" <' + FFrom.MailAddress + '>');
+
+  // Determine if TLS should be used
+  UseTLS := Config.UseTLS or Config.UseSSL;
+  if UseTLS then
+    lSmtpTls := TSmtpTls.stlsStartTls
+  else
+    lSmtpTls := TSmtpTls.stlsNone;
+
+  // If multipart, add MIME headers
+  if MimeBody <> '' then
+  begin
+    MimeText := 'MIME-Version: 1.0'#13#10 +
+      'Content-Type: multipart/mixed; boundary="' + Boundary + '"'#13#10 +
+      MimeBody;
+  end else
+    MimeText := StringToUTF8(BodyText.Text + BodyHTML.Text);
+
+  // Send via mORMot2
+  try
+    if Config.UseThread then
+    begin
+      FSendMailSucess := SendEmail(ServerCfg, FromAddr, CsvDest, SubjectEncoded,
+        MimeText, '', 'UTF-8', lSmtpTls);
+    end else
+      FSendMailSucess := SendEmail(ServerCfg, FromAddr, CsvDest, SubjectEncoded,
+        MimeText, '', 'UTF-8', lSmtpTls);
+  except
+    FSendMailSucess := false;
+  end;
+end;
+{$ELSE}
+// ======================================================================
+// INDY SMTP IMPLEMENTATION (original)
+// ======================================================================
 procedure TD2BridgeAPIMail.Exec_SendMail;
 var
  I: integer;
@@ -301,9 +420,10 @@ begin
     vPartHTML.Free;
    vSMTP.Free;
    vSSLHandler.Free;
-   vEmail.Free;
- end;
+    vEmail.Free;
+  end;
 end;
+{$ENDIF} // USE_MORMOT2
 
 function TD2BridgeAPIMail.From: ID2BridgeAPIMailAddress;
 begin

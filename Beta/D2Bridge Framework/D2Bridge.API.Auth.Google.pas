@@ -81,7 +81,7 @@ implementation
 
 uses
   D2Bridge.API.Auth.Google.Config, D2Bridge.API.Auth.Google.Response,
-  D2Bridge.Instance, IdURI;
+  D2Bridge.Instance{$IFNDEF USE_MORMOT2}, IdURI{$ENDIF};
 
 { TD2BridgeAPIAuthGoogle }
 

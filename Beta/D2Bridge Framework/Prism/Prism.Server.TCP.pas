@@ -1,4 +1,4 @@
-{
+﻿{
  +--------------------------------------------------------------------------+
   D2Bridge Framework Content
 
@@ -36,6 +36,11 @@ interface
 
 uses
   SysUtils, Classes, StrUtils, DateUtils, Generics.Collections, RTTI, Variants,
+  {$IFDEF FPC}
+  Syncobjs,
+  {$ELSE}
+  System.SyncObjs,
+  {$ENDIF}
   D2Bridge.JSON,
 {$IFNDEF FPC}
   NetEncoding,
@@ -45,19 +50,34 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
+{$IFDEF USE_MORMOT2}
+  // mORMot2 engine
+  mormot.core.base, mormot.core.os, mormot.core.buffers, mormot.core.text,
+  mormot.core.unicode, mormot.core.threads,
+  mormot.net.sock, mormot.net.http, mormot.net.server,
+  mormot.net.ws.core, mormot.net.ws.server,
+  Prism.MormotCompat,
+{$ELSE}
+  // Indy engine (legacy)
   IdCustomTCPServer, IdCustomHTTPServer, IdContext, IdSSL, IdSSLOpenSSL, IdURI, IdCoderMIME,
   IdHashSHA, IdGlobal, IdIOHandler,
+{$ENDIF}
   Prism.WebSocketContext, Prism.Server.HTTP.Commom, Prism.Types, Prism.Util, Prism.Interfaces,
   Prism.Session.Thread.Proc;
 
 
 
 type
- TIdContext = IdContext.TIdContext;
- TPrismHTTPRequest = Prism.Server.HTTP.Commom.TPrismHTTPRequest;
- TPrismHTTPResponse = Prism.Server.HTTP.Commom.TPrismHTTPResponse;
- TPrismWebSocketContext = Prism.WebSocketContext.TPrismWebSocketContext;
- TPrismWebSocketMessage = Prism.Server.HTTP.Commom.TPrismWebSocketMessage;
+{$IFDEF USE_MORMOT2}
+  TMormotHttpRequest = THttpServerRequestAbstract;
+  TMormotConnectionID = THttpServerConnectionID;
+{$ELSE}
+  TIdContext = IdContext.TIdContext;
+{$ENDIF}
+  TPrismHTTPRequest = Prism.Server.HTTP.Commom.TPrismHTTPRequest;
+  TPrismHTTPResponse = Prism.Server.HTTP.Commom.TPrismHTTPResponse;
+  TPrismWebSocketContext = Prism.WebSocketContext.TPrismWebSocketContext;
+  TPrismWebSocketMessage = Prism.Server.HTTP.Commom.TPrismWebSocketMessage;
 
  TStreamFileStatus = (SFSNone, SFSWaitingFile, SFSCreateFile, SFSWriteFile, SFSEndFile);
 
@@ -67,11 +87,117 @@ type
  TOnFinishedGetHTML = procedure(APrismWSContext: TPrismWebSocketContext) of object;
  TOnGetFile = procedure(const APrismRequest: TPrismHTTPRequest; const AGetFileName: string; var AResponseFileName: string; var AResponseFileContent: string; var AResponseRedirect: string; var AMimeType: string) of object;
  TOnReceiveMessage = function(AMessage: TPrismWebSocketMessage; PrismWSContext: TPrismWebSocketContext): string of object;
- TOnParseFile = procedure(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext) of object;
+{$IFDEF USE_MORMOT2}
+  TOnParseFile = procedure(AFileName: string; ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext) of object;
+{$ELSE}
+  TOnParseFile = procedure(AFileName: string; AContext: TIdContext; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext) of object;
+{$ENDIF}
 
 type
 
+{$IFDEF USE_MORMOT2}
+  // Custom WebSocket server that accepts WebSocket upgrades without
+  // requiring Connection: keep-alive (browsers send only Connection: Upgrade)
+  TD2BridgeWebSocketServer = class(TWebSocketServer)
+  protected
+    procedure Process(ClientSock: THttpServerSocket;
+      ConnectionID: THttpServerConnectionID; ConnectionThread: TSynThread); override;
+  end;
+{$ENDIF}
+
   { TPrismServerTCP }
+
+{$IFDEF USE_MORMOT2}
+  TPrismServerTCP = class(TComponent)
+  private
+    FHttpServer: THttpServer;
+    FWebSocketServer: TWebSocketServer;
+    FWSProtocols: TWebSocketProtocolList;
+    FWSConnections: TDictionary<string, TWebSocketProcessServer>;
+    FWSConnectionsLock: {$IFDEF FPC}syncObjs.TCriticalSection{$ELSE}system.syncObjs.TCriticalSection{$ENDIF};
+    FLogLines: TStrings;    // accumulated log buffer
+    FLogLock: {$IFDEF FPC}syncObjs.TCriticalSection{$ELSE}system.syncObjs.TCriticalSection{$ENDIF}; // lock for thread-safe logging
+    FOnGetHTML: TOnGetHTML;
+    FOnReceiveMessage: TOnReceiveMessage;
+    FOnGetFile: TOnGetFile;
+    FOnFinishedGetHTML: TOnFinishedGetHTML;
+    FOnRESTData: TOnRESTData;
+    FOnDownloadData: TOnDownloadData;
+    FOnParseFile: TOnParseFile;
+    FTlsContext: TMormotTlsConfig;
+    FActive: boolean;
+    FRootDirectory: string;
+    FMimesType: TPrismServerFileExtensions;
+    FAppBase: string;
+    function MimesType: TPrismServerFileExtensions;
+    procedure DoGetHTML(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+    procedure DoDownloadData(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+    procedure DoRESTData(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+    procedure DoParseFile(AFileName: string; ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext);
+    procedure DoFinishedGetHTML(APrismWSContext: TPrismWebSocketContext);
+    function DoReceiveMessage(AMessage: string; PrismWSContext: TPrismWebSocketContext): string;
+    procedure DoUploadFile(AFiles: TStrings; PrismSession: IPrismSession; AFormUUID, ASender: string);
+    function FormatReceivedMesssage(AMessage: string): TPrismWebSocketMessage;
+    procedure RemoveEscapeFromFileURL(var vFileName: string);
+    procedure InsertEscapeToFileURL(var vFileName: string);
+    function GetAppBase: string;
+    procedure SetAppBase(const Value: string);
+    // Logging
+    procedure D2Log(const Msg: string);
+    // mORMot2 request handler
+    function OnHttpRequest(Ctxt: THttpServerRequestAbstract): cardinal;
+    // WebSocket callbacks
+    procedure OnWSIncomingFrame(Sender: TWebSocketProcess; const Request: TWebSocketFrame);
+    procedure OnWSConnect(Sender: TWebSocketServerSocket);
+    procedure OnWSDisconnect(Sender: TWebSocketServerSocket);
+    // Session change callback
+    procedure OnSessionChange(EnumChangeType: TValue; varSession: TValue);
+    // Auth route handler (in thread)
+    procedure Exec_RouteAuth(varPrismHTTPRequest: TValue);
+  protected
+  public
+    const
+    FpathWebSocket = '/websocket';
+    FpathRESTServer = '/rest';
+    FpathDownload = '/d2bridge/download';
+    FpathUpload = '/d2bridge/upload';
+    Fhtmlconnectiontimeout = 64000;
+    Fhtmlconnectionmax = 0;
+    fServerName = 'PrismServer with D2Bridge Framework Server';
+    constructor Create;
+    destructor Destroy; override;
+
+    function ParseHeaders(ARequest: TMormotHttpRequest; const AHTMLHeader: string): TPrismHTTPRequest; overload;
+{$IFDEF D2BRIDGE}
+    function ParseHeaders(AContext: TObject; const AHTMLHeader: string): TPrismHTTPRequest; overload;
+{$ENDIF}
+
+    procedure ReadMultipartFormData(Sock: TCrtSocket; Boundary: String; ContentLength: Integer; AFiles: TStrings; ASender: string; PrismWSContext: TPrismWebSocketContext);
+    function ReadBodyStringFromData(Sock: TCrtSocket; ContentLength: Integer): string;
+    function ReadBodyStreamFromData(Sock: TCrtSocket; ContentLength: Integer): TMemoryStream;
+
+    procedure SendWebSocketMessage(AMessage: string; APrismSession: IPrismSession);
+    procedure DisconnectWebSocketMessage(APrismSession: IPrismSession; NilPrismSession: Boolean = false);
+    procedure CloseAllConnection;
+
+    procedure StartServer(APort: integer; ASSL: boolean = false);
+    procedure StopServer;
+
+    property Active: boolean read FActive;
+    property AppBase: string read GetAppBase write SetAppBase;
+    property TLSContext: TMormotTlsConfig read FTlsContext write FTlsContext;
+
+    property OnGetHTML: TOnGetHTML read FOnGetHTML write FOnGetHTML;
+    property OnGetFile: TOnGetFile read FOnGetFile write FOnGetFile;
+    property OnFinishedGetHTML: TOnFinishedGetHTML read FOnFinishedGetHTML write FOnFinishedGetHTML;
+    property OnReceiveMessage: TOnReceiveMessage read FOnReceiveMessage write FOnReceiveMessage;
+    property OnRESTData: TOnRestData read FOnRestData write FOnRestData;
+    property OnDownloadData: TOnDownloadData read FOnDownloadData write FOnDownloadData;
+    property OnParseFile: TOnParseFile read FOnParseFile write FOnParseFile;
+    property RootDirectory: string read FRootDirectory write FRootDirectory;
+  end;
+
+{$ELSE} // NOT USE_MORMOT2 � original Indy implementation
 
   TPrismServerTCP = class(TIdCustomTCPServer)
   strict private
@@ -148,12 +274,29 @@ type
    property OnDownloadData: TOnDownloadData read FOnDownloadData write FOnDownloadData;
    property OnParseFile: TOnParseFile read FOnParseFile write FOnParseFile;
    property RootDirectory: string read FRootDirectory write FRootDirectory;
-   //property OnCommandGet;
-   //property OnExecute;
+    //property OnCommandGet;
+    //property OnExecute;
   end;
+
+{$ENDIF} // USE_MORMOT2
 
 
 type
+{$IFDEF USE_MORMOT2}
+  // WebSocket I/O helper using mORMot2 raw sockets
+  TWebSocketIOHandlerHelper = class
+  private
+    FSock: TCrtSocket;
+  public
+    constructor CreateFromCrtSocket(aSock: TCrtSocket);
+    function ReadByte: Byte;
+    function ReadBytes: TArray<byte>;
+    function ReadString: string;
+
+    procedure WriteBytes(RawData: TArray<byte>);
+    procedure WriteString(const str: string);
+  end;
+{$ELSE}
   TWebSocketIOHandlerHelper = class(TIdIOHandler)
   public
     function ReadBytes: TArray<byte>;
@@ -162,6 +305,7 @@ type
     procedure WriteBytes(RawData: TArray<byte>);
     procedure WriteString(const str: string);
   end;
+{$ENDIF}
 
 const
  URLInternalAPI = '/d2bridge/api';
@@ -175,9 +319,17 @@ implementation
 uses
   Prism.BaseClass, Prism.Session, Prism.Session.Helper, Prism.Options.Security.Event,
   D2Bridge.Lang.Core, D2Bridge.API.Auth, D2Bridge.Util,
-  D2Bridge.Rest.Route,
-  IdTCPConnection;
+  D2Bridge.Rest.Route
+{$IFNDEF USE_MORMOT2}
+  , IdTCPConnection
+{$ENDIF}
+  ;
 
+
+{$IFNDEF USE_MORMOT2}
+// ======================================================================
+// INDY IMPLEMENTATION (legacy � ativo quando USE_MORMOT2 N�O definido)
+// ======================================================================
 
 { TPrismServerTCP }
 
@@ -2459,38 +2611,19 @@ end;
 
 function TWebSocketIOHandlerHelper.ReadBytes: TArray<Byte>;
 var
-  b0, b1, l: Byte;
+  l: Byte;
   b: array [0..7] of Byte;
   i, DecodedSize: {$IFNDEF FPC}Int64{$ELSE}SizeInt{$ENDIF};
   Mask: array [0..3] of Byte;
-  Fin, Masked, MessageComplete: Boolean;
-  Opcode: Byte;
-  FrameData: TArray<Byte>;
 begin
-  // Leitor de frames WebSocket com suporte a mensagens FRAGMENTADAS.
-  // Navegadores (ex.: Chrome) quebram payloads grandes (imagens base64) em
-  // varios frames: 1o frame FIN=0/opcode=texto, frames de continuacao
-  // FIN=0/opcode=0, e frame final FIN=1. A versao antiga so aceitava um
-  // unico frame de texto ($81); ao receber um fragmentado ela desincronizava
-  // o stream e derrubava a conexao (-> sessao morre -> tela preta).
-  // Agora remontamos a mensagem respeitando o bit FIN, acumulando os frames
-  // de dados (continuation/text/binary) e ignorando frames de controle
-  // (ping/pong/close), independente do tamanho/quantidade.
-  Result := [];
-  MessageComplete := False;
   try
-    while not MessageComplete do
+    Result:= [];
+
+    if ReadByte = $81 then
     begin
-      b0 := ReadByte;
-      Fin := (b0 and $80) <> 0;
-      Opcode := b0 and $0F;
-
-      b1 := ReadByte;
-      Masked := (b1 and $80) <> 0;
-      l := b1 and $7F;
-
+      l := ReadByte;
       case l of
-        126:
+        $FE:
           begin
             b[1] := ReadByte;
             b[0] := ReadByte;
@@ -2502,7 +2635,7 @@ begin
             b[7] := 0;
             DecodedSize := PInt64(@b)^;
           end;
-        127:
+        $FF:
           begin
             b[7] := ReadByte;
             b[6] := ReadByte;
@@ -2515,45 +2648,23 @@ begin
             DecodedSize := PInt64(@b)^;
           end;
         else
-          DecodedSize := l;
+          DecodedSize := l - 128;
       end;
+      Mask[0] := ReadByte;
+      Mask[1] := ReadByte;
+      Mask[2] := ReadByte;
+      Mask[3] := ReadByte;
 
-      if Masked then
+      if DecodedSize < 1 then
       begin
-        Mask[0] := ReadByte;
-        Mask[1] := ReadByte;
-        Mask[2] := ReadByte;
-        Mask[3] := ReadByte;
+        Result := [];
+        Exit;
       end;
 
-      FrameData := [];
-      if DecodedSize > 0 then
-      begin
-        SetLength(FrameData, DecodedSize);
-        inherited ReadBytes(TIdBytes(FrameData), DecodedSize, False);
-        if Masked then
-          for i := 0 to DecodedSize - 1 do
-            FrameData[i] := FrameData[i] xor Mask[i mod 4];
-      end;
-
-      case Opcode of
-        $0, $1, $2: // continuation / text / binary -> acumula
-          begin
-            Result := Result + FrameData;
-            if Fin then
-              MessageComplete := True;
-          end;
-        $8: // close -> encerra
-          begin
-            Result := [];
-            MessageComplete := True;
-          end;
-        $9, $A: // ping / pong -> ignora e continua lendo o proximo frame
-          ;
-      else
-        // opcode desconhecido -> ignora este frame
-        ;
-      end;
+      SetLength(Result, DecodedSize);
+      inherited ReadBytes(TIdBytes(Result), DecodedSize, False);
+      for i := 0 to DecodedSize - 1 do
+        Result[i] := Result[i] xor Mask[i mod 4];
     end;
   except
     on E: Exception do
@@ -2666,5 +2777,1293 @@ procedure TWebSocketIOHandlerHelper.WriteString(const str: string);
 begin
   WriteBytes(TArray<byte>(IndyTextEncoding_UTF8.GetBytes(str)));
 end;
+
+{$ELSE}
+// ======================================================================
+// ======================================================================
+// MORMOT2 IMPLEMENTATION (WebSocket-enabled)
+// ======================================================================
+
+{ TD2BridgeWebSocketServer }
+
+procedure TD2BridgeWebSocketServer.Process(ClientSock: THttpServerSocket;
+  ConnectionID: THttpServerConnectionID; ConnectionThread: TSynThread);
+var
+  err: integer;
+  vUpgradeStr: RawUTF8;
+  vIsWS: boolean;
+begin
+  // Determine if this is a WebSocket upgrade request.
+  // Check both HeaderFlags AND the Upgrade header directly for robustness.
+  vUpgradeStr := ClientSock.Http.Upgrade;
+  vIsWS := (hfConnectionUpgrade in ClientSock.Http.HeaderFlags)
+           and IsGet(ClientSock.Method)
+           and ((vUpgradeStr <> '') and PropNameEquals(vUpgradeStr, 'websocket'));
+  // Also check the raw headers in case Upgrade was parsed differently
+  if not vIsWS then
+  begin
+    vIsWS := (vUpgradeStr <> '') and PropNameEquals(vUpgradeStr, 'websocket')
+             and IsGet(ClientSock.Method);
+  end;
+
+  if vIsWS then
+  begin
+    PrismServer.D2Log('WS-Process UPGRADE DETECTED - URL='+string(ClientSock.URL)+
+      ' Flags='+IntToStr(byte(ClientSock.Http.HeaderFlags)));
+    err := WebSocketProcessUpgrade(ClientSock);
+    if err <> HTTP_SUCCESS then
+      PrismServer.D2Log('WS-Process Upgrade FAILED err='+IntToStr(err))
+    else
+      PrismServer.D2Log('WS-Process Upgrade OK');
+  end
+  else
+    inherited Process(ClientSock, ConnectionID, ConnectionThread);
+end;
+
+{ TPrismServerTCP }
+
+constructor TPrismServerTCP.Create;
+begin
+  inherited Create(nil);
+  FMimesType := TPrismServerFileExtensions.Create;
+  FRootDirectory := 'wwwroot' + PathDelim;
+  FAppBase := '/';
+  FActive := false;
+  FHttpServer := nil;
+  FWebSocketServer := nil;
+  FWSProtocols := nil;
+  FWSConnections := TDictionary<string, TWebSocketProcessServer>.Create;
+  FWSConnectionsLock := {$IFDEF FPC}syncObjs.TCriticalSection.Create{$ELSE}system.syncObjs.TCriticalSection.Create{$ENDIF};
+  FLogLines := TStringList.Create;
+  FLogLock := {$IFDEF FPC}syncObjs.TCriticalSection.Create{$ELSE}system.syncObjs.TCriticalSection.Create{$ENDIF};
+  D2Log('=== D2Bridge mORMot2 server starting ===');
+  D2Log('RootDirectory='+FRootDirectory+' AppBase='+FAppBase);
+end;
+
+destructor TPrismServerTCP.Destroy;
+begin
+  D2Log('=== D2Bridge mORMot2 server shutting down ===');
+  StopServer;
+  FreeAndNil(FMimesType);
+  if Assigned(FLogLines) then
+  try D2Log('=== END OF LOG ==='); FreeAndNil(FLogLines); except end;
+  if Assigned(FLogLock) then begin FLogLock.Free; FLogLock := nil; end;
+  if Assigned(FWSConnectionsLock) then begin FWSConnectionsLock.Free; FWSConnectionsLock := nil; end;
+  if Assigned(FWSConnections) then begin FWSConnections.Free; FWSConnections := nil; end;
+  inherited;
+end;
+
+procedure TPrismServerTCP.D2Log(const Msg: string);
+var
+  s: string;
+  f: TextFile;
+begin
+  {$IFNDEF D2BRIDGE_DEBUG_LOG}
+    Exit;
+  {$ENDIF}
+  s := FormatDateTime('hh:nn:ss.zzz', Now) + ' [' + IntToStr(TThread.CurrentThread.ThreadID) + '] ' + Msg;
+  // Always write to console
+  WriteLn(s);
+  FLogLock.Enter;
+  try
+    FLogLines.Add(s);
+    // Flush to file immediately
+    AssignFile(f, 'd2bridge_debug.log');
+    if FileExists('d2bridge_debug.log') then System.Append(f) else Rewrite(f);
+    for s in FLogLines do WriteLn(f, s);
+    CloseFile(f);
+    FLogLines.Clear;
+  finally
+    FLogLock.Leave;
+  end;
+end;
+
+procedure TPrismServerTCP.CloseAllConnection;
+begin
+  StopServer;
+end;
+
+procedure TPrismServerTCP.StartServer(APort: integer; ASSL: boolean);
+var
+  PortStr: RawUTF8;
+  Opts: THttpServerOptions;
+  WSChat: TWebSocketProtocolChat;
+  ltyTls: TNetTlsContext;
+begin
+  if FActive then Exit;
+  PortStr := Int32ToUtf8(APort);
+  Opts := [hsoIncludeDateHeader, hsoHeadersUnfiltered];
+  if ASSL then Include(Opts, hsoEnableTls);
+
+  ///Sugestão Claude ai
+  FWebSocketServer := TD2BridgeWebSocketServer.Create(PortStr, nil, nil, 'D2Bridge', 64, 10000, Opts);
+  FWebSocketServer.Settings^.HeartbeatDelay := 20000; // ping a cada 20 s
+  FWebSocketServer.Settings^.DisconnectAfterInvalidHeartbeatCount := 3;
+  FWebSocketServer.Settings^.LoopDelay := 50;   // envio da fila em até ~50 ms
+
+  // Set callbacks BEFORE starting to avoid race conditions
+  FWebSocketServer.OnRequest := OnHttpRequest;
+  FWebSocketServer.OnWebSocketConnect := OnWSConnect;
+  FWebSocketServer.OnWebSocketDisconnect := OnWSDisconnect;
+
+  // Register WebSocket protocol
+  // The URIs must match what the browser sends (without leading / and
+  // without query string). mORMot2 CloneByUri does exact match so we
+  // register one protocol per WebSocket endpoint.
+  FWSProtocols := FWebSocketServer.WebSocketProtocols;
+  WSChat := TWebSocketProtocolChat.Create('d2bridge', 'appbasedefault/websocket/connectionparams');
+  WSChat.OnIncomingFrame := OnWSIncomingFrame;
+  FWSProtocols.Add(WSChat);
+  WSChat := TWebSocketProtocolChat.Create('d2bridge', 'appbasedefault/websocket/connectionresponseparams');
+  WSChat.OnIncomingFrame := OnWSIncomingFrame;
+  FWSProtocols.Add(WSChat);
+
+  if ASSL then
+  begin
+    if (TLSContext.Enabled)
+    then begin
+       InitNetTlsContext(ltyTls, true, // true = servidor
+       TLSContext.CertificateFile,
+       TLSContext.PrivateKeyFile,
+       '',                          // PrivateKeyPassword (vazio se sem senha)
+        TLSContext.CACertificatesFile);
+        ltyTls.IgnoreCertificateErrors := TLSContext.IgnoreCertificateErrors;
+        ltyTls.ClientCertificateAuthentication:= false;
+        FWebSocketServer.WaitStarted(30,@ltyTls);
+     end
+     else FWebSocketServer.WaitStartedHttps(30);
+  end
+  else
+    FWebSocketServer.WaitStarted(30);
+
+  FHttpServer := FWebSocketServer;
+  FActive := true;
+end;
+
+procedure TPrismServerTCP.StopServer;
+var f: TextFile; s: string;
+begin
+  D2Log('StopServer called');
+  FActive := false;
+  // Flush remaining log lines
+  FLogLock.Enter;
+  try
+    if FLogLines.Count > 0 then
+    begin
+      AssignFile(f, 'd2bridge_debug.log');
+      if FileExists('d2bridge_debug.log') then System.Append(f) else Rewrite(f);
+      for s in FLogLines do WriteLn(f, s);
+      CloseFile(f);
+      FLogLines.Clear;
+    end;
+  finally FLogLock.Leave; end;
+  FWSConnectionsLock.Enter;
+  try FWSConnections.Clear; finally FWSConnectionsLock.Leave; end;
+  if Assigned(FWebSocketServer) then
+  begin
+    FWebSocketServer.Shutdown;
+    FreeAndNil(FWebSocketServer);
+    FHttpServer := nil;
+  end;
+end;
+
+function TPrismServerTCP.OnHttpRequest(Ctxt: THttpServerRequestAbstract): cardinal;
+var
+  vPrismRequest: TPrismHTTPRequest;
+  vPrismResponse: TPrismHTTPResponse;
+  vPrismWSContext: TPrismWebSocketContext;
+  vFileName, vMimeType, vContentStr, vAppBase: string;
+  vResponseFileName, vResponseFileContent, vResponseRedirect: string;
+  vProc: TPrismSessionThreadProc;
+  // Upload
+  vUploadOrigin, vUploadSender: string;
+  vUploadFilesList: TStrings;
+  vPrismSession: TPrismSession;
+  vContentLengthInt: Integer;
+  // Multipart parser locals
+  vBoundaryFull, vBoundaryEnd: RawUTF8;
+  vSearchPos, vPartStart, vPartEnd: Integer;
+  vHeadersEnd, vContentStart, vContentEnd: Integer;
+  vUploadFilename, vFileNameStr: string;
+  vFileStream: TMemoryStream;
+  vZ: Integer;
+  vPartHeaders: string;
+begin
+  Result := HTTP_SUCCESS;
+
+  D2Log('REQ ' + string(Ctxt.Method) + ' ' + string(Ctxt.Url) + ' CT=' + string(Ctxt.InContentType));
+
+  vPrismRequest := ParseHeaders(Ctxt, '');
+      D2Log('PARSED Path=' + vPrismRequest.Path + ' Method=' + IntToStr(integer(vPrismRequest.WebMethod)) +
+        ' IP=' + vPrismRequest.RemoteIP + ' Upgrade=' + vPrismRequest.Upgrade +
+        ' Cookie=' + Copy(vPrismRequest.Cookies, 1, 80) +
+        ' ReloadPage=' + BoolToStr(vPrismRequest.ReloadPage, true) +
+        ' Token=' + Copy(vPrismRequest.D2BridgeToken, 1, 16) +
+        ' SessUUID=' + Copy(vPrismRequest.SessionUUID, 1, 12));
+  try
+    // WebSocket upgrade requests: let TWebSocketServer infrastructure handle them.
+    // Do NOT process as regular HTTP � return early so no HTTP response is sent.
+    if (vPrismRequest.Upgrade = 'websocket') and
+       (vPrismRequest.SecWebSocketKey <> '') then
+    begin
+      D2Log('WS-UPGRADE path=' + vPrismRequest.Path + ' key='+Copy(vPrismRequest.SecWebSocketKey,1,12)+'...');
+      // Force the WebSocket upgrade by using the server's infrastructure
+      // Set response to empty � the WebSocket server will override this
+      Ctxt.OutContentType := '';
+      Ctxt.OutContent := '';
+      // Return early to prevent OnHttpRequest from sending an HTTP response
+      // that would kill the WebSocket upgrade
+      vPrismRequest.Free;
+      Result := HTTP_SUCCESS;
+      Exit;
+    end;
+
+    if (not Assigned(vPrismRequest.Route)) and
+       (not Assigned(PrismBaseClass.ServerController.PrimaryFormClass)) then
+    begin Result := HTTP_NOTFOUND; Exit; end;
+
+    if vPrismRequest.IPListedInBlackList then
+    begin
+      Ctxt.OutContentType := TEXT_CONTENT_TYPE;
+      Ctxt.OutContent := StringToUtf8('D2Bridge Framework Application'#13#10'Access Denied');
+      Result := HTTP_FORBIDDEN; Exit;
+    end;
+
+    if vPrismRequest.UserAgentBlocked then
+    begin
+      Ctxt.OutContentType := TEXT_CONTENT_TYPE;
+      Ctxt.OutContent := 'Blocked by User-Agent Policy';
+      Result := 451; Exit;
+    end;
+
+    if vPrismRequest.Purpose = 'prefetch' then
+    begin
+      vContentStr := '{"status":204,"serveruuid":"'+PrismBaseClass.ServerUUID+'"}';
+      Ctxt.OutContentType := JSON_CONTENT_TYPE;
+      Ctxt.OutContent := StringToUtf8(vContentStr);
+      Result := HTTP_SUCCESS; Exit;
+    end;
+
+    if (vPrismRequest.WebMethod = wmtHEAD) and (AnsiPos('reconnect', vPrismRequest.Path) > 0) then
+    begin
+      if PrismBaseClass.Sessions.Exist(vPrismRequest.QueryParams.Values['prismsession'], vPrismRequest.QueryParams.Values['token']) then
+        Result := HTTP_ACCEPTED
+      else
+        Result := HTTP_UNAUTHORIZED;
+{$IFDEF D2DOCKER}
+      Ctxt.AddOutHeader(['D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias]);
+{$ENDIF}
+      Exit;
+    end;
+
+    if (AnsiPos(FpathUpload, vPrismRequest.Path) > 0) or vPrismRequest.IsUploadFile then
+    begin
+      if (vPrismRequest.Boundary <> '') and TryStrToInt(vPrismRequest.ContentLength, vContentLengthInt) and (vContentLengthInt > 0) then
+      begin
+        vUploadOrigin := vPrismRequest.QueryParams.Values['origin'];
+        vUploadSender := vPrismRequest.QueryParams.Values['sender'];
+        vPrismWSContext := TPrismWebSocketContext.Create;
+        try
+          vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+          vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+          vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['formuuid'];
+          if (vPrismWSContext.PrismSessionUUID <> '') and
+             (vPrismWSContext.FormUUID <> '') and
+             (vPrismWSContext.Token <> '') then
+          begin
+            if PrismBaseClass.Sessions.Exist(vPrismWSContext.PrismSessionUUID) then
+            begin
+              vPrismSession := PrismBaseClass.Sessions.Item[vPrismWSContext.PrismSessionUUID] as TPrismSession;
+              if vPrismSession.Token = vPrismWSContext.Token then
+              begin
+                vPrismWSContext.PrismSession := vPrismSession;
+                D2Log('UPLOAD-START boundary=' + vPrismRequest.Boundary +
+                  ' len=' + IntToStr(Length(Ctxt.InContent)) +
+                  ' sender=' + vUploadSender +
+                  ' origin=' + vUploadOrigin);
+                vUploadFilesList := TStringList.Create;
+                try
+                  // --- Parse multipart body from raw bytes (binary-safe via RawUtf8) ---
+                  vBoundaryFull := StringToUtf8('--' + vPrismRequest.Boundary);
+                  vBoundaryEnd := StringToUtf8('--' + vPrismRequest.Boundary + '--');
+                  vUploadFilesList.Clear;
+                  vSearchPos := 1;
+                  while vSearchPos < Length(Ctxt.InContent) do
+                  begin
+                    vPartStart := PosEx(vBoundaryFull, Ctxt.InContent, vSearchPos);
+                    if vPartStart = 0 then Break;
+                    // Check end boundary (--boundary--)
+                    if (vPartStart + Length(vBoundaryFull) + 1 <= Length(Ctxt.InContent)) and
+                       (Ctxt.InContent[vPartStart + Length(vBoundaryFull)] = '-') and
+                       (Ctxt.InContent[vPartStart + Length(vBoundaryFull) + 1] = '-') then
+                      Break;
+                    Inc(vPartStart, Length(vBoundaryFull));
+                    while (vPartStart <= Length(Ctxt.InContent)) and (Ctxt.InContent[vPartStart] in [#13, #10]) do
+                      Inc(vPartStart);
+                    vPartEnd := PosEx(vBoundaryFull, Ctxt.InContent, vPartStart);
+                    if vPartEnd = 0 then Break;
+                    // Strip trailing CRLF before next boundary
+                    vContentEnd := vPartEnd - 1;
+                    while (vContentEnd >= vPartStart) and (Ctxt.InContent[vContentEnd] in [#13, #10]) do
+                      Dec(vContentEnd);
+                    // Find headers end (double CRLF or double LF)
+                    vHeadersEnd := 0;
+                    for vZ := vPartStart to vContentEnd - 3 do
+                      if (Ctxt.InContent[vZ] = #13) and (Ctxt.InContent[vZ+1] = #10) and
+                         (Ctxt.InContent[vZ+2] = #13) and (Ctxt.InContent[vZ+3] = #10) then
+                      begin vHeadersEnd := vZ; Break; end;
+                    if vHeadersEnd = 0 then
+                      for vZ := vPartStart to vContentEnd - 1 do
+                        if (Ctxt.InContent[vZ] = #10) and (Ctxt.InContent[vZ+1] = #10) then
+                        begin vHeadersEnd := vZ; Break; end;
+                    if vHeadersEnd = 0 then
+                    begin vSearchPos := vPartEnd; Continue; end;
+                    // Extract filename from headers
+                    vPartHeaders := UTF8ToString(Copy(Ctxt.InContent, vPartStart, vHeadersEnd - vPartStart));
+                    vUploadFilename := '';
+                    vZ := Pos('filename="', vPartHeaders);
+                    if vZ > 0 then
+                    begin
+                      vUploadFilename := Copy(vPartHeaders, vZ + 10);
+                      vZ := Pos('"', vUploadFilename);
+                      if vZ > 0 then
+                        vUploadFilename := Copy(vUploadFilename, 1, vZ - 1);
+                    end;
+                    if vUploadFilename = '' then
+                    begin vSearchPos := vPartEnd; Continue; end;
+                    // Content starts after double CRLF (4) or double LF (2)
+                    vContentStart := vHeadersEnd + 4;
+                    if (vHeadersEnd + 1 <= Length(Ctxt.InContent)) and
+                       (Ctxt.InContent[vHeadersEnd+1] = #10) and
+                       (Ctxt.InContent[vHeadersEnd] <> #13) then
+                      vContentStart := vHeadersEnd + 2;
+                    if vContentEnd >= vContentStart then
+                    begin
+                      vFileStream := TMemoryStream.Create;
+                      try
+                        vFileStream.Write(Ctxt.InContent[vContentStart], vContentEnd - vContentStart + 1);
+                        vFileNameStr := vUploadFilename;
+                        vZ := 1;
+                        while FileExists(vPrismSession.PathSession + vFileNameStr) do
+                        begin
+                          vFileNameStr := Format('%s%d%s', [ChangeFileExt(vUploadFilename, ''), vZ, ExtractFileExt(vUploadFilename)]);
+                          Inc(vZ);
+                        end;
+                        ForceDirectories(ExtractFileDir(vPrismSession.PathSession));
+                        vFileStream.SaveToFile(vPrismSession.PathSession + vFileNameStr);
+                        vUploadFilesList.Add(vPrismSession.PathSession + vFileNameStr);
+                        D2Log('UPLOAD-SAVED: ' + vFileNameStr + ' (' + IntToStr(vFileStream.Size) + ' bytes)');
+                      finally
+                        vFileStream.Free;
+                      end;
+                    end;
+                    vSearchPos := vPartEnd;
+                  end;
+                  // --- End multipart parsing ---
+                  if (vUploadOrigin = 'editor') and (vUploadFilesList.Count > 0) then
+                  begin
+                    vFileName := RelativeFileFromRoot(vUploadFilesList[0]);
+                    vFileName := StringReplace(vFileName, '\', '/', [rfReplaceAll]);
+                    vFileName := URLEncode(vFileName);
+                    vFileName := StringReplace(vFileName, '%2F', '/', [rfReplaceAll]);
+                    Ctxt.OutContentType := JSON_CONTENT_TYPE;
+                    Ctxt.OutContent := StringToUtf8('{"data": {"filePath": "' + vFileName + '"}}');
+                  end;
+                  DoUploadFile(vUploadFilesList, vPrismWSContext.PrismSession, vPrismWSContext.FormUUID, vUploadSender);
+                finally
+                  vUploadFilesList.Free;
+                end;
+              end;
+            end;
+          end;
+        finally
+          vPrismWSContext.Free;
+        end;
+      end;
+      Result := HTTP_SUCCESS; Exit;
+    end;
+
+    if (AnsiPos(FpathDownload, vPrismRequest.Path) > 0) and (vPrismRequest.QueryParams.Values['file'] <> '') then
+    begin
+      vPrismResponse := TPrismHTTPResponse.Create;
+      vPrismWSContext := TPrismWebSocketContext.Create;
+      try
+        vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+        vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+        vPrismWSContext.FormUUID := vPrismRequest.QueryParams.Values['FormUUID'];
+        DoDownloadData(Ctxt, vPrismRequest, vPrismResponse, vPrismWSContext);
+        if vPrismResponse.FileName <> '' then
+        begin
+          vFileName := ExtractFileName(vPrismResponse.FileName);
+          Ctxt.OutContentType := StringToUtf8(MimesType.GetMimeType(vFileName));
+          Ctxt.AddOutHeader(['Content-Disposition: attachment; filename="'+vFileName+'"']);
+          Ctxt.OutContent := StringFromFile(vPrismResponse.FileName);
+          Result := HTTP_SUCCESS;
+        end;
+      finally vPrismResponse.Free; vPrismWSContext.Free; end;
+      Exit;
+    end;
+
+    if AnsiPos(FpathRESTServer+'/json/jqgrid/post', vPrismRequest.Path) > 0 then
+    begin
+      vPrismResponse := TPrismHTTPResponse.Create;
+      vPrismWSContext := TPrismWebSocketContext.Create;
+      try
+        vPrismWSContext.Token := vPrismRequest.QueryParams.Values['token'];
+        vPrismWSContext.PrismSessionUUID := vPrismRequest.QueryParams.Values['prismsession'];
+        DoRESTData(Ctxt, vPrismRequest, vPrismResponse, vPrismWSContext);
+        if (vPrismResponse.Content <> '') and not vPrismResponse.Error then
+        begin
+          Ctxt.OutContentType := StringToUtf8(vPrismResponse.ContentType);
+          Ctxt.OutContent := StringToUtf8(vPrismResponse.Content);
+          Result := HTTP_SUCCESS;
+        end;
+      finally vPrismResponse.Free; vPrismWSContext.Free; end;
+      Exit;
+    end;
+
+    if AnsiPos(URLAPIAuth, vPrismRequest.Path) > 0 then
+    begin
+      try
+        if AnsiPos(URLAPIAuth + '/google', vPrismRequest.Path) > 0 then
+        begin
+          if vPrismRequest.QueryParams.Values['state'] <> '' then
+          begin
+            vPrismSession := PrismBaseClass.Sessions.FromPushID(vPrismRequest.QueryParams.Values['state']) as TPrismSession;
+            if Assigned(vPrismSession) then
+            begin
+              vPrismSession.UnLock(APIAuthLockName);
+              vPrismSession.URI.QueryParams.Update(vPrismRequest.QueryParams);
+            end;
+          end;
+        end
+        else if AnsiPos(URLAPIAuth + '/microsoft', vPrismRequest.Path) > 0 then
+        begin
+          if vPrismRequest.QueryParams.Values['state'] <> '' then
+          begin
+            vPrismSession := PrismBaseClass.Sessions.FromPushID(vPrismRequest.QueryParams.Values['state']) as TPrismSession;
+            if Assigned(vPrismSession) then
+            begin
+              vPrismSession.UnLock(APIAuthLockName);
+              vPrismSession.URI.QueryParams.Update(vPrismRequest.QueryParams);
+            end;
+          end;
+        end;
+        Ctxt.OutContentType := StringToUtf8('text/html; charset=UTF-8');
+        Ctxt.AddOutHeader(['Server: ' + fServerName]);
+{$IFDEF D2DOCKER}
+        Ctxt.AddOutHeader(['D2DockerInstance: ' + PrismBaseClass.ServerController.D2DockerInstanceAlias]);
+{$ENDIF}
+        Ctxt.OutContent := StringToUtf8(
+          '<html><head><title>D2Bridge Framework</title></head>' +
+          '<body><h1>Closing...</h1>' +
+          '<script type="text/javascript">window.close();</script>' +
+          '</body></html>'
+        );
+      except
+      end;
+      Result := HTTP_SUCCESS; Exit;
+    end;
+
+    if (vPrismRequest.WebMethod = wmtGET) and
+       ((vPrismRequest.Path = '/') or (vPrismRequest.Path = '') or
+        (Copy(vPrismRequest.Path, 1, 2) = '/?')) then
+    begin
+      vPrismResponse := TPrismHTTPResponse.Create;
+      vPrismWSContext := TPrismWebSocketContext.Create;
+      try
+        if vPrismRequest.ReloadPage then
+        begin
+          vPrismWSContext.Token := vPrismRequest.D2BridgeToken;
+          vPrismWSContext.PrismSessionUUID := vPrismRequest.SessionUUID;
+          vPrismWSContext.Reloading := true;
+          D2Log('HTML-RELOAD Token='+Copy(vPrismRequest.D2BridgeToken,1,12)+
+            ' SessUUID='+Copy(vPrismRequest.SessionUUID,1,12)+
+            ' SessExists='+BoolToStr(PrismBaseClass.Sessions.Exist(vPrismRequest.SessionUUID), true));
+        end;
+        DoGetHTML(Ctxt, vPrismRequest, vPrismResponse, vPrismWSContext);
+        if not vPrismRequest.TooManyConnFromIP then
+        begin
+          if vPrismResponse.Content <> '' then
+          begin
+            Ctxt.OutContentType := StringToUtf8(vPrismResponse.ContentType);
+            Ctxt.OutContent := StringToUtf8(vPrismResponse.Content);
+            if vPrismRequest.ReloadPage then
+            begin
+              vAppBase := vPrismRequest.AppBase;
+              if not vAppBase.EndsWith('/') then vAppBase := vAppBase + '/';
+              Ctxt.AddOutHeader([
+                'Set-Cookie: D2Bridge_Token=; Max-Age=0; path='+vAppBase,
+                'Set-Cookie: D2Bridge_PrismSession=; Max-Age=0; path='+vAppBase,
+                'Set-Cookie: D2Bridge_ReloadPage=; Max-Age=0; path='+vAppBase]);
+            end;
+            Result := HTTP_SUCCESS;
+            DoFinishedGetHTML(vPrismWSContext);
+          end;
+        end else
+        begin
+          Ctxt.OutContentType := 'text/html; charset=UTF-8';
+          Ctxt.OutContent := StringToUtf8(PrismBaseClass.PrismServerHTML.GetError429(vPrismRequest.AcceptLanguage));
+          Ctxt.AddOutHeader(['Retry-After: 60']);
+          Result := 429;
+        end;
+      finally vPrismResponse.Free; vPrismWSContext.Free; end;
+      Exit;
+    end;
+
+    if PrismBaseClass.Rest.Options.EnableRESTServerExternal and Assigned(vPrismRequest.Route) then
+    begin
+      if (vPrismRequest.Route as TD2BridgeRestRoute).RequireJWT and (not vPrismRequest.JWTvalid) then //Route not Authenticated
+      begin
+        Ctxt.OutContentType := 'application/json; charset=UTF-8';
+        Ctxt.OutContent := StringToUtf8('{"error":"forbidden","error_description":"You are not authorized to access this endpoint."}');
+        Result := HTTP_FORBIDDEN;
+        Exit;
+      end;
+
+      vPrismResponse := TPrismHTTPResponse.Create;
+      vPrismResponse.ContentType := vPrismRequest.ContentType;
+      try
+        PrismBaseClass.Sessions.AddThreadhID(TThread.CurrentThread.ThreadID, nil);
+        (vPrismRequest.Route as TD2BridgeRestRoute).DoCallBack(vPrismRequest, vPrismResponse);
+        PrismBaseClass.Sessions.RemoveThreadID(TThread.CurrentThread.ThreadID);
+        Ctxt.OutContentType := StringToUtf8(vPrismResponse.ContentType);
+        if vPrismResponse.Content <> '' then
+          Ctxt.OutContent := StringToUtf8(vPrismResponse.Content)
+        else if vPrismResponse.InitializedJSON then
+        begin
+          if vPrismResponse.IsJSONArray then
+            Ctxt.OutContent := StringToUtf8(vPrismResponse.JSON.GetValue('jsonarray').ToJSON)
+          else
+            Ctxt.OutContent := StringToUtf8(vPrismResponse.JSON.ToJSON);
+        end;
+        Result := HTTP_SUCCESS;
+      finally vPrismResponse.Free; end;
+      Exit;
+    end;
+
+    if vPrismRequest.WebMethod = wmtGET then
+    begin
+      vFileName := StringReplace(RootDirectory +
+        StringReplace(vPrismRequest.Path, '/', PathDelim, [rfReplaceAll]),
+        PathDelim+PathDelim, PathDelim, [rfReplaceAll]);
+      RemoveEscapeFromFileURL(vFileName);
+      vFileName := URLDecode(vFileName);
+      if AnsiPos('?', vFileName) > 0 then
+        vFileName := Copy(vFileName, 1, AnsiPos('?', vFileName)-1);
+
+      D2Log('STATIC=' + vPrismRequest.Path + ' webm=' + IntToStr(integer(vPrismRequest.WebMethod)) +
+        ' file=' + vFileName + ' exists=' + BoolToStr(FileExists(vFileName), true));
+      if FileExists(vFileName) and (not DirectoryExists(vFileName)) then
+      begin
+        vMimeType := MimesType.GetMimeType(vFileName);
+        D2Log('MIME=' + vMimeType);
+        if vMimeType = '' then
+          Ctxt.OutContentType := 'application/octet-stream'
+        else
+          Ctxt.OutContentType := StringToUtf8(vMimeType);
+        Ctxt.OutContent := StringFromFile(vFileName);
+        Result := HTTP_SUCCESS;
+      end
+      else
+      begin
+        // Check if OnGetFile can handle this (virtual files, CDN redirects)
+        vResponseFileName := ''; vResponseFileContent := ''; vResponseRedirect := ''; vMimeType := '';
+        if Assigned(FOnGetFile) then
+          FOnGetFile(vPrismRequest, vFileName, vResponseFileName, vResponseFileContent, vResponseRedirect, vMimeType);
+
+        if vResponseRedirect <> '' then
+        begin
+          Ctxt.OutCustomHeaders := 'Location: ' + StringToUtf8(vResponseRedirect) + #13#10;
+          Ctxt.OutContentType := '';
+          Ctxt.OutContent := '';
+          Result := HTTP_FOUND;
+          D2Log('REDIRECT to=' + vResponseRedirect);
+        end
+        else if vResponseFileContent <> '' then
+        begin
+          if vMimeType <> '' then
+            Ctxt.OutContentType := StringToUtf8(vMimeType)
+          else
+            Ctxt.OutContentType := 'application/javascript';
+          Ctxt.OutContent := StringToUtf8(vResponseFileContent);
+          Result := HTTP_SUCCESS;
+          D2Log('VIRTUAL-FILE served len=' + IntToStr(Length(vResponseFileContent)));
+        end
+        else if (vResponseFileName <> '') and FileExists(vResponseFileName) then
+        begin
+          vMimeType := MimesType.GetMimeType(vResponseFileName);
+          if vMimeType = '' then
+            Ctxt.OutContentType := 'application/octet-stream'
+          else
+            Ctxt.OutContentType := StringToUtf8(vMimeType);
+          Ctxt.OutContent := StringFromFile(vResponseFileName);
+          Result := HTTP_SUCCESS;
+          D2Log('ALT-FILE served=' + vResponseFileName);
+        end
+        else
+        begin
+          Ctxt.OutContentType := TEXT_CONTENT_TYPE;
+          Ctxt.OutContent := '404 Not Found';
+          Result := HTTP_NOTFOUND;
+        end;
+      end;
+      Exit;
+    end;
+
+    Ctxt.OutContentType := TEXT_CONTENT_TYPE;
+    Ctxt.OutContent := '404 Not Found';
+    Result := HTTP_NOTFOUND;
+  finally
+    vPrismRequest.Free;
+  end;
+end;
+
+function TPrismServerTCP.ParseHeaders(ARequest: TMormotHttpRequest; const AHTMLHeader: string): TPrismHTTPRequest;
+var
+  vPath, vPathOnly, vMethod: RawUTF8;
+  vCookies, vCookieParts: TStrings;
+  vCookiePair, vCookiesRaw: string;
+  vBoundaryPos: Integer;
+  vAuthValue, vEncoded, vDecoded: string;
+  vAuthPos, vAuthEnd, I: Integer;
+  vPayLoad: TJSONObject;
+begin
+  Result := TPrismHTTPRequest.Create;
+  vMethod := UpperCase(ARequest.Method);
+  if vMethod = 'GET' then Result.WebMethod := wmtGET
+  else if vMethod = 'POST' then Result.WebMethod := wmtPOST
+  else if vMethod = 'PUT' then Result.WebMethod := wmtPUT
+  else if vMethod = 'DELETE' then Result.WebMethod := wmtDELETE
+  else if vMethod = 'PATCH' then Result.WebMethod := wmtPATCH
+  else if vMethod = 'HEAD' then Result.WebMethod := wmtHEAD;
+  Result.Protocol := 'http';
+  if PrismBaseClass.Options.SSL then Result.Protocol := 'https';
+  vPath := ARequest.Url;
+  vPathOnly := ExtractQueryParams(vPath, vMethod); // vMethod reused as temp for query string output
+  Result.Path := UTF8ToString(vPathOnly);
+  Result.QueryParams.LineBreak := '&';
+  if vMethod <> '' then
+    Result.QueryParams.Text := UTF8ToString(UrlDecodeStr(vMethod))
+  else
+    Result.QueryParams.Text := '';
+  Result.RemoteIP := UTF8ToString(ARequest.RemoteIP);
+  Result.RawHeaders.Text := UTF8ToString(ARequest.InHeaders);
+  Result.UserAgent := UTF8ToString(ARequest.UserAgent);
+  Result.Host := UTF8ToString(ARequest.Host);
+  Result.ContentType := UTF8ToString(ARequest.InContentType);
+  Result.Boundary := '';
+  if Pos('boundary=', LowerCase(Result.ContentType)) > 0 then
+  begin
+    vBoundaryPos := Pos('boundary=', LowerCase(Result.ContentType));
+    Result.Boundary := Trim(Copy(Result.ContentType, vBoundaryPos + 9));
+  end;
+  Result.ContentLength := IntToStr(Length(ARequest.InContent));
+  Result.Content := UTF8ToString(ARequest.InContent);
+  if Pos('upgrade: websocket', LowerCase(Result.RawHeaders.Text)) > 0 then
+  begin
+    Result.Upgrade := 'websocket';
+    if Pos('sec-websocket-key:', LowerCase(Result.RawHeaders.Text)) > 0 then
+    begin
+      Result.SecWebSocketKey := Trim(Copy(Result.RawHeaders.Text, Pos('sec-websocket-key:', LowerCase(Result.RawHeaders.Text)) + 18));
+      if Pos(#13#10, Result.SecWebSocketKey) > 0 then
+        Result.SecWebSocketKey := Copy(Result.SecWebSocketKey, 1, Pos(#13#10, Result.SecWebSocketKey)-1);
+    end;
+  end;
+   vCookies := TStringList.Create;
+   vCookieParts := TStringList.Create;
+   try
+     vCookieParts.Delimiter := '=';
+     vCookieParts.StrictDelimiter := true;
+     if Pos('cookie:', LowerCase(Result.RawHeaders.Text)) > 0 then
+     begin
+        vCookiesRaw := Copy(Result.RawHeaders.Text, Pos('cookie:', LowerCase(Result.RawHeaders.Text)) + 7);
+        if Pos(#13#10, vCookiesRaw) > 0 then
+          vCookiesRaw := Copy(vCookiesRaw, 1, Pos(#13#10, vCookiesRaw)-1)
+        else if Pos(#10, vCookiesRaw) > 0 then
+          vCookiesRaw := Copy(vCookiesRaw, 1, Pos(#10, vCookiesRaw)-1);
+       Result.Cookies := Trim(vCookiesRaw);
+        vCookies.LineBreak := ';';
+       vCookies.Text := Trim(vCookiesRaw);
+       for vCookiePair in vCookies do
+       begin
+         vCookieParts.DelimitedText := Trim(vCookiePair);
+          if vCookieParts.Count >= 2 then
+          begin
+            if vCookieParts[0] = 'D2Bridge_Token' then Result.D2BridgeToken := vCookieParts[1]
+           else if vCookieParts[0] = 'D2Bridge_PrismSession' then Result.SessionUUID := vCookieParts[1]
+           else if vCookieParts[0] = 'D2Bridge_ServerUUID' then Result.ServerUUID := vCookieParts[1]
+           else if vCookieParts[0] = 'D2Bridge_ReloadPage' then Result.ReloadPage := SameText(vCookieParts[1], 'true');
+         end;
+       end;
+    end;
+  finally vCookies.Free; vCookieParts.Free; end;
+  // Authorization header parsing (Basic / Bearer) — mirrors Indy ParseHeaders
+  if Pos('authorization:', LowerCase(Result.RawHeaders.Text)) > 0 then
+  begin
+    vAuthPos := Pos('authorization:', LowerCase(Result.RawHeaders.Text)) + 14;
+    vAuthValue := Copy(Result.RawHeaders.Text, vAuthPos, MaxInt);
+    vAuthEnd := Pos(#13#10, vAuthValue);
+    if vAuthEnd > 0 then
+      vAuthValue := Copy(vAuthValue, 1, vAuthEnd - 1)
+    else
+    begin
+      vAuthEnd := Pos(#10, vAuthValue);
+      if vAuthEnd > 0 then
+        vAuthValue := Copy(vAuthValue, 1, vAuthEnd - 1);
+    end;
+    vAuthValue := Trim(vAuthValue);
+    Result.Authorization := vAuthValue;
+
+    if Pos(UpperCase('basic '), UpperCase(vAuthValue)) = 1 then
+    begin
+      Result.AuthorizationType := 'Basic';
+      vEncoded := Trim(Copy(vAuthValue, 7, MaxInt));
+      {$IFDEF FPC}
+      vDecoded := DecodeStringBase64(vEncoded);
+      {$ELSE}
+      vDecoded := TNetEncoding.Base64.Decode(vEncoded);
+      {$ENDIF}
+      I := Pos(':', vDecoded);
+      if I > 0 then
+      begin
+        Result.User := Copy(vDecoded, 1, I - 1);
+        Result.Password := Copy(vDecoded, I + 1);
+      end;
+    end else
+    if Pos(UpperCase('bearer '), UpperCase(vAuthValue)) = 1 then
+    begin
+      Result.AuthorizationType := 'Bearer';
+      Result.JWTtoken := Trim(Copy(vAuthValue, 8, MaxInt));
+
+      if Pos(Uppercase('"token_type":"refresh"'),
+         Uppercase(PrismBaseClass.Options.Security.Rest.JWTAccess.Payload(Result.JWTtoken))) > 0 then
+      begin
+        Result.JWTvalid := PrismBaseClass.Options.Security.Rest.JWTRefresh.Valid(Result.JWTtoken);
+        Result.JWTPayLoad := PrismBaseClass.Options.Security.Rest.JWTRefresh.Payload(Result.JWTtoken);
+        Result.JWTTokenType := TSecurityJWTTokenType.JWTTokenRefresh;
+      end else
+      begin
+        Result.JWTvalid := PrismBaseClass.Options.Security.Rest.JWTAccess.Valid(Result.JWTtoken);
+        Result.JWTPayLoad := PrismBaseClass.Options.Security.Rest.JWTAccess.Payload(Result.JWTtoken);
+      end;
+
+      if Result.JWTPayLoad <> '' then
+      begin
+        try
+          vPayLoad := TJSONObject.ParseJSONValue(Result.JWTPayLoad) as TJSONObject;
+          Result.JWTsub := vPayLoad.GetValue('sub', '');
+          Result.JWTidentity := {$IFDEF FPC}DecodeStringBase64{$ELSE}TNetEncoding.Base64.Decode{$ENDIF}(vPayLoad.GetValue('identity', ''));
+          vPayLoad.Free;
+        except
+        end;
+      end;
+    end;
+  end;
+  if PrismBaseClass.Options.Security.Enabled then
+  begin
+    if PrismBaseClass.Options.Security.IP.IPv4BlackList.ExistIP(Result.ClientIP) then
+      if not PrismBaseClass.Options.Security.IP.IPv4WhiteList.ExistIP(Result.ClientIP) then
+        Result.IPListedInBlackList := true;
+    if PrismBaseClass.Options.Security.UserAgent.UserAgentBlocked(Result.UserAgent) then
+      Result.UserAgentBlocked := true;
+  end;
+  if (Result.Path <> '/') and (Result.Path <> '') then
+    if Result.WebMethod in [wmtGET, wmtPOST, wmtPUT, wmtDELETE, wmtPATCH] then
+      Result.Route := PrismBaseClass.Rest.Routes.Item[Result.WebMethod, Result.PathWithoutParams] as TObject;
+end;
+
+{$IFDEF D2BRIDGE}
+function TPrismServerTCP.ParseHeaders(AContext: TObject; const AHTMLHeader: string): TPrismHTTPRequest;
+begin
+  Result := ParseHeaders(AContext as TMormotHttpRequest, AHTMLHeader);
+end;
+{$ENDIF}
+
+procedure TPrismServerTCP.ReadMultipartFormData(Sock: TCrtSocket; Boundary: String; ContentLength: Integer; AFiles: TStrings; ASender: string; PrismWSContext: TPrismWebSocketContext);
+var
+ vBodyBytes: TBytes;
+ vBodyRaw: RawUTF8;
+ vBoundaryFull: RawUTF8;
+ vSearchPos, vPartStart, vPartEnd: Integer;
+ vHeadersEnd, vContentStart, vContentEnd: Integer;
+ vUploadFilename, vFileNameStr: string;
+ vFileStream: TMemoryStream;
+ vZ: Integer;
+ vPartHeaders: string;
+ vFiles: TStrings;
+begin
+ if (ContentLength <= 0) or (not Assigned(Sock)) then Exit;
+ SetLength(vBodyBytes, ContentLength);
+ Sock.SockInRead(@vBodyBytes[0], ContentLength, true);
+ SetString(vBodyRaw, PAnsiChar(vBodyBytes), Length(vBodyBytes));
+ vFiles := TStringList.Create;
+ try
+  vBoundaryFull := StringToUtf8('--' + Boundary);
+  vSearchPos := 1;
+  while vSearchPos < Length(vBodyRaw) do
+  begin
+   vPartStart := PosEx(vBoundaryFull, vBodyRaw, vSearchPos);
+   if vPartStart = 0 then Break;
+   if (vPartStart + Length(vBoundaryFull) + 1 <= Length(vBodyRaw)) and
+      (vBodyRaw[vPartStart + Length(vBoundaryFull)] = '-') and
+      (vBodyRaw[vPartStart + Length(vBoundaryFull) + 1] = '-') then
+    Break;
+   Inc(vPartStart, Length(vBoundaryFull));
+   while (vPartStart <= Length(vBodyRaw)) and (vBodyRaw[vPartStart] in [#13, #10]) do
+    Inc(vPartStart);
+   vPartEnd := PosEx(vBoundaryFull, vBodyRaw, vPartStart);
+   if vPartEnd = 0 then Break;
+   vContentEnd := vPartEnd - 1;
+   while (vContentEnd >= vPartStart) and (vBodyRaw[vContentEnd] in [#13, #10]) do
+    Dec(vContentEnd);
+   vHeadersEnd := 0;
+   for vZ := vPartStart to vContentEnd - 3 do
+    if (vBodyRaw[vZ] = #13) and (vBodyRaw[vZ+1] = #10) and
+       (vBodyRaw[vZ+2] = #13) and (vBodyRaw[vZ+3] = #10) then
+    begin vHeadersEnd := vZ; Break; end;
+   if vHeadersEnd = 0 then
+    for vZ := vPartStart to vContentEnd - 1 do
+     if (vBodyRaw[vZ] = #10) and (vBodyRaw[vZ+1] = #10) then
+     begin vHeadersEnd := vZ; Break; end;
+   if vHeadersEnd = 0 then
+   begin vSearchPos := vPartEnd; Continue; end;
+   vPartHeaders := UTF8ToString(Copy(vBodyRaw, vPartStart, vHeadersEnd - vPartStart));
+   vUploadFilename := '';
+   vZ := Pos('filename="', vPartHeaders);
+   if vZ > 0 then
+   begin
+    vUploadFilename := Copy(vPartHeaders, vZ + 10);
+    vZ := Pos('"', vUploadFilename);
+    if vZ > 0 then
+     vUploadFilename := Copy(vUploadFilename, 1, vZ - 1);
+   end;
+   if vUploadFilename = '' then
+   begin vSearchPos := vPartEnd; Continue; end;
+   vContentStart := vHeadersEnd + 4;
+   if (vHeadersEnd + 1 <= Length(vBodyRaw)) and
+      (vBodyRaw[vHeadersEnd+1] = #10) and
+      (vBodyRaw[vHeadersEnd] <> #13) then
+    vContentStart := vHeadersEnd + 2;
+   if vContentEnd >= vContentStart then
+   begin
+    vFileStream := TMemoryStream.Create;
+    try
+     vFileStream.Write(vBodyRaw[vContentStart], vContentEnd - vContentStart + 1);
+     vFileNameStr := vUploadFilename;
+     vZ := 1;
+     while FileExists(PrismWSContext.PrismSession.PathSession + vFileNameStr) do
+     begin
+      vFileNameStr := Format('%s%d%s', [ChangeFileExt(vUploadFilename, ''), vZ, ExtractFileExt(vUploadFilename)]);
+      Inc(vZ);
+     end;
+     ForceDirectories(ExtractFileDir(PrismWSContext.PrismSession.PathSession));
+     vFileStream.SaveToFile(PrismWSContext.PrismSession.PathSession + vFileNameStr);
+     vFiles.Add(PrismWSContext.PrismSession.PathSession + vFileNameStr);
+    finally
+     vFileStream.Free;
+    end;
+   end;
+   vSearchPos := vPartEnd;
+  end;
+  DoUploadFile(vFiles, PrismWSContext.PrismSession, PrismWSContext.FormUUID, ASender);
+  if Assigned(AFiles) then
+   AFiles.Text := vFiles.Text;
+ finally
+  vFiles.Free;
+ end;
+end;
+
+function TPrismServerTCP.ReadBodyStringFromData(Sock: TCrtSocket; ContentLength: Integer): string;
+var BodyBytes: TBytes;
+begin
+  D2Log('WARNING: ReadBodyStringFromData called in mORMot2 — body should be read from Ctxt.InContent, not from TCrtSocket (body already consumed by THttpServer). Returning empty string.');
+  Result := '';
+  if (ContentLength > 0) and Assigned(Sock) then
+  begin SetLength(BodyBytes, ContentLength); Sock.SockInRead(@BodyBytes[0], ContentLength, true); Result := TEncoding.UTF8.GetString(BodyBytes); end;
+end;
+
+function TPrismServerTCP.ReadBodyStreamFromData(Sock: TCrtSocket; ContentLength: Integer): TMemoryStream;
+begin
+ D2Log('WARNING: ReadBodyStreamFromData called in mORMot2 — body should be read from Ctxt.InContent, not from TCrtSocket (body already consumed by THttpServer). Returning nil.');
+ Result := nil;
+end;
+
+procedure TPrismServerTCP.SendWebSocketMessage(AMessage: string; APrismSession: IPrismSession);
+var vSession: TPrismSession; vWSProcess: TWebSocketProcessServer; vSessionUUID: string; vFrame: TWebSocketFrame;
+begin
+  if AMessage = '' then Exit;
+  try
+    vSession := APrismSession as TPrismSession;
+    vSessionUUID := vSession.UUID;
+    FWSConnectionsLock.Enter;
+    try
+      if FWSConnections.TryGetValue(vSessionUUID, vWSProcess) then
+      begin
+        vFrame.opcode := focText; vFrame.payload := StringToUtf8(AMessage); vFrame.content := []; vFrame.tix := 0;
+        //(vWSProcess.Protocol as TWebSocketProtocolChat).SendFrame(vWSProcess, vFrame);
+        vWSProcess.SendFrameAsync(vFrame);
+        D2Log('WS-SEND OK to='+Copy(vSessionUUID,1,12)+' len='+IntToStr(Length(AMessage)));
+      end
+      else
+        D2Log('WS-SEND FAILED - session '+Copy(vSessionUUID,1,12)+' not in FWSConnections');
+    finally FWSConnectionsLock.Leave; end;
+  except end;
+end;
+
+procedure TPrismServerTCP.DisconnectWebSocketMessage(APrismSession: IPrismSession; NilPrismSession: Boolean = false);
+var vSession: TPrismSession; vWSProcess: TWebSocketProcessServer; vSessionUUID: string;
+begin
+  try
+    vSession := APrismSession as TPrismSession;
+    vSessionUUID := vSession.UUID; vSession.WebSocketContext := nil;
+    FWSConnectionsLock.Enter;
+    try
+      if FWSConnections.TryGetValue(vSessionUUID, vWSProcess) then
+      begin FWSConnections.Remove(vSessionUUID); vWSProcess.Shutdown(false); end;
+    finally FWSConnectionsLock.Leave; end;
+  except end;
+end;
+
+{ WebSocket Callbacks }
+
+procedure TPrismServerTCP.OnWSConnect(Sender: TWebSocketServerSocket);
+var vUpgradeUri, vQueryStr, vToken, vSessionUUID, vFormUUID, vViewportInfo: string;
+    vPrismSession: TPrismSession; vWSContext: TPrismWebSocketContext; vQueryParams: TStrings;
+begin
+  D2Log('WS-CONNECT entering');
+  if not Assigned(Sender) or not Assigned(Sender.WebSocketProcess) or not Assigned(Sender.WebSocketProcess.Protocol) then Exit;
+  vUpgradeUri := UTF8ToString(Sender.WebSocketProcess.Protocol.UpgradeUri);
+  D2Log('WS-CONNECT UpgradeUri=' + vUpgradeUri);
+  vQueryParams := TStringList.Create;
+  try
+    vQueryParams.Delimiter := '&'; vQueryParams.StrictDelimiter := true;
+    if Pos('?', vUpgradeUri) > 0 then
+      vQueryParams.DelimitedText := Copy(vUpgradeUri, Pos('?', vUpgradeUri)+1, MaxInt);
+    vToken := vQueryParams.Values['token'];
+    vSessionUUID := vQueryParams.Values['prismsession'];
+    vFormUUID := vQueryParams.Values['formuuid'];
+    vViewportInfo := URLDecode(vQueryParams.Values['viewportinfo']);
+  finally vQueryParams.Free; end;
+  if (vSessionUUID = '') or (vToken = '') then
+  begin
+    D2Log('WS-CONNECT FAILED - empty session('+vSessionUUID+') or token('+Copy(vToken,1,16)+')');
+    Exit;
+  end;
+  if PrismBaseClass.Sessions.Exist(vSessionUUID) then
+  begin
+    vPrismSession := PrismBaseClass.Sessions.Item[vSessionUUID] as TPrismSession;
+    if vPrismSession.Token = vToken then
+    begin
+      vWSContext := TPrismWebSocketContext.Create;
+      vWSContext.Token := vToken; vWSContext.PrismSessionUUID := vSessionUUID;
+      vWSContext.FormUUID := vFormUUID; vWSContext.PrismSession := vPrismSession; vWSContext.Established := true;
+      if Pos('/connectionparams', vUpgradeUri) > 0 then vWSContext.ChannelName := 'PrismSocketConnection'
+      else if Pos('/connectionresponseparams', vUpgradeUri) > 0 then vWSContext.ChannelName := 'PrismSocketResponse';
+      vPrismSession.WebSocketContext := Sender;
+      if vViewportInfo <> '' then
+      try vPrismSession.InfoConnection.Screen.ProcessScreenInfo(vViewportInfo); except end;
+      if vWSContext.ChannelName = 'PrismSocketConnection' then
+      begin
+        FWSConnectionsLock.Enter;
+        try FWSConnections.AddOrSetValue(vSessionUUID, Sender.WebSocketProcess);
+        finally FWSConnectionsLock.Leave; end;
+      end;
+      PrismBaseClass.ServerController.DoSessionChange(scsStabilizedConnectioSession, vPrismSession);
+      D2Log('WS-CONNECT OK session='+vSessionUUID+' channel='+vWSContext.ChannelName);
+    end
+    else
+      D2Log('WS-CONNECT FAILED - token mismatch for session '+vSessionUUID);
+  end
+  else
+    D2Log('WS-CONNECT FAILED - session '+vSessionUUID+' not found');
+end;
+
+procedure TPrismServerTCP.OnWSDisconnect(Sender: TWebSocketServerSocket);
+var vWSProcess: TWebSocketProcessServer; vKey: string;
+begin
+  D2Log('WS-DISCONNECT entering');
+  if not Assigned(Sender) then Exit;
+  vWSProcess := Sender.WebSocketProcess;
+  if not Assigned(vWSProcess) then Exit;
+  FWSConnectionsLock.Enter;
+  try for vKey in FWSConnections.Keys do if FWSConnections[vKey] = vWSProcess then begin FWSConnections.Remove(vKey); Break; end;
+  finally FWSConnectionsLock.Leave; end;
+end;
+
+procedure TPrismServerTCP.OnWSIncomingFrame(Sender: TWebSocketProcess; const Request: TWebSocketFrame);
+var vMessage, vSessionUUID, vResponse, vUpgradeUri: string; vWSContext: TPrismWebSocketContext;
+    vWSProcess: TWebSocketProcessServer; vQueryParams: TStrings; vIsMain: Boolean;
+    vFrameResp: TWebSocketFrame;
+begin
+  if Request.opcode <> focText then
+  begin
+    if Request.opcode in [focConnectionClose, focPing] then
+      D2Log('WS-FRAME opcode='+IntToStr(Ord(Request.opcode))+' len='+IntToStr(Length(Request.payload)));
+    Exit;
+  end;
+  vMessage := Utf8ToString(Request.payload);
+  vWSContext := TPrismWebSocketContext.Create;
+  try
+    vWSProcess := (Sender as TWebSocketProcessServer);
+    // Check if sender is the main connection registered in FWSConnections
+    vIsMain := False;
+    FWSConnectionsLock.Enter;
+    try
+      for vSessionUUID in FWSConnections.Keys do
+        if FWSConnections[vSessionUUID] = vWSProcess then
+        begin
+          vIsMain := True;
+          vWSContext.PrismSessionUUID := vSessionUUID;
+          vWSContext.PrismSession := PrismBaseClass.Sessions.Item[vSessionUUID] as TPrismSession;
+          if Assigned(vWSContext.PrismSession) then vWSContext.Token := vWSContext.PrismSession.Token;
+          Break;
+        end;
+    finally FWSConnectionsLock.Leave; end;
+    // If not found in FWSConnections, this is the response WebSocket
+    // Extract session UUID from the upgrade URI
+    if not vIsMain then
+    begin
+      vUpgradeUri := Utf8ToString(Sender.Protocol.UpgradeUri);
+      vQueryParams := TStringList.Create;
+      try
+        vQueryParams.Delimiter := '&'; vQueryParams.StrictDelimiter := true;
+        if Pos('?', vUpgradeUri) > 0 then
+          vQueryParams.DelimitedText := Copy(vUpgradeUri, Pos('?', vUpgradeUri)+1, MaxInt);
+        vSessionUUID := vQueryParams.Values['prismsession'];
+      finally vQueryParams.Free; end;
+      if vSessionUUID <> '' then
+      begin
+        vWSContext.PrismSessionUUID := vSessionUUID;
+        vWSContext.PrismSession := PrismBaseClass.Sessions.Item[vSessionUUID] as TPrismSession;
+        if Assigned(vWSContext.PrismSession) then vWSContext.Token := vWSContext.PrismSession.Token;
+      end;
+    end;
+    vWSContext.Established := true;
+    if Assigned(vWSContext.PrismSession) then
+    begin
+      vResponse := DoReceiveMessage(vMessage, vWSContext);
+      if vResponse <> '' then
+      begin
+        if vIsMain then
+          SendWebSocketMessage(vResponse, vWSContext.PrismSession)
+        else
+        begin
+          vFrameResp.opcode := focText; vFrameResp.payload := StringToUtf8(vResponse);
+          vFrameResp.content := []; vFrameResp.tix := 0;
+          (Sender.Protocol as TWebSocketProtocolChat).SendFrame(Sender, vFrameResp);
+          D2Log('WS-RESPONSE direct len='+IntToStr(Length(vResponse)));
+        end;
+      end;
+    end;
+  finally vWSContext.Free; end;
+end;
+
+procedure TPrismServerTCP.DoGetHTML(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest;
+  var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+begin if Assigned(FOnGetHTML) then FOnGetHTML(APrismRequest, APrismReponse, PrismWSContext); end;
+
+procedure TPrismServerTCP.DoDownloadData(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest;
+  var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+begin if Assigned(FOnDownloadData) then FOnDownloadData(APrismRequest, APrismReponse, PrismWSContext); end;
+
+procedure TPrismServerTCP.DoRESTData(ARequest: TMormotHttpRequest; APrismRequest: TPrismHTTPRequest;
+  var APrismReponse: TPrismHTTPResponse; var PrismWSContext: TPrismWebSocketContext);
+begin if Assigned(FOnRESTData) then FOnRESTData(APrismRequest, APrismReponse, PrismWSContext); end;
+
+procedure TPrismServerTCP.DoParseFile(AFileName: string; ARequest: TMormotHttpRequest;
+  APrismRequest: TPrismHTTPRequest; var APrismReponse: TPrismHTTPResponse; var APrismWSContext: TPrismWebSocketContext);
+begin if Assigned(FOnParseFile) then FOnParseFile(AFileName, ARequest, APrismRequest, APrismReponse, APrismWSContext); end;
+
+procedure TPrismServerTCP.DoFinishedGetHTML(APrismWSContext: TPrismWebSocketContext);
+begin if Assigned(FOnFinishedGetHTML) then FOnFinishedGetHTML(APrismWSContext); end;
+
+function TPrismServerTCP.DoReceiveMessage(AMessage: string; PrismWSContext: TPrismWebSocketContext): string;
+var vPrismWSMessage: TPrismWebSocketMessage; vToken: string;
+begin
+  Result := '';
+  {$IFDEF D2BRIDGE}
+  try
+    if Assigned(PrismWSContext) and Assigned(PrismWSContext.PrismSession) then
+    begin
+      if (csDestroying in TPrismSession(PrismWSContext.PrismSession).ComponentState) then Exit;
+      vPrismWSMessage := FormatReceivedMesssage(AMessage);
+      try
+        if vPrismWSMessage.Parameters.TryGetValue('Token', vToken)
+           and (PrismWSContext.PrismSession.Token = vToken) then
+        begin
+          if Assigned(FOnReceiveMessage) then
+            Result := FOnReceiveMessage(vPrismWSMessage, PrismWSContext);
+        end else
+        try if not PrismWSContext.PrismSession.Closing then PrismWSContext.PrismSession.Close; except end;
+        if Assigned(vPrismWSMessage) then vPrismWSMessage.Free;
+      except end;
+    end;
+  except end;
+  {$ENDIF}
+end;
+
+procedure TPrismServerTCP.DoUploadFile(AFiles: TStrings; PrismSession: IPrismSession; AFormUUID, ASender: string);
+var vPrismForm: IPrismForm; vSender: TObject; I: integer;
+begin
+  vSender := nil; PrismSession.ThreadAddCurrent;
+  try
+    vPrismForm := PrismSession.ActiveFormByFormUUID(AFormUUID);
+    if Assigned(vPrismForm) then
+    begin
+      if ASender <> '' then
+      try for I := 0 to Pred(vPrismForm.Controls.Count) do if SameText(vPrismForm.Controls[I].NamePrefix, ASender) then begin vSender := vPrismForm.Controls[I] as TObject; Break; end; except end;
+      if Supports(vPrismForm, IPrismForm) then vPrismForm.DoUpload(AFiles, vSender) else PrismSession.ActiveForm.DoUpload(AFiles, vSender);
+    end;
+  finally PrismSession.ThreadRemoveCurrent; end;
+end;
+
+function TPrismServerTCP.FormatReceivedMesssage(AMessage: string): TPrismWebSocketMessage;
+var MSGJSONObject: TJSONObject; MSGParameters: TJSONArray; I: Integer; vParamName, vParamValue: string;
+begin
+  Result := TPrismWebSocketMessage.Create;
+  try
+    if IsJSONValid(AMessage) then
+    begin
+      Result.IsFormatted := true; MSGJSONObject := TJSONObject.ParseJSONValue(AMessage) as TJSONObject;
+      Result.Name := MSGJSONObject.GetValue('name', '');
+      if SameText(MSGJSONObject.GetValue('type', ''), 'CallBack') then Result.MessageType := wsMsgCallBack
+      else if SameText(MSGJSONObject.GetValue('type', ''), 'Procedure') then Result.MessageType := wsMsgProcedure
+      else if SameText(MSGJSONObject.GetValue('type', ''), 'Function') then Result.MessageType := wsMsgFunction
+      else if SameText(MSGJSONObject.GetValue('type', ''), 'Text') then Result.MessageType := wsMsgText
+      else if SameText(MSGJSONObject.GetValue('type', ''), 'Heartbeat') then Result.MessageType := wsMsgHeartbeat else Result.MessageType := wsNone;
+      MSGParameters := MSGJSONObject.GetValue('parameters') as TJSONArray;
+      if Assigned(MSGParameters) then
+      for I := 0 to Pred(MSGParameters.Count) do
+      begin
+        vParamName := (MSGParameters.Items[I] as TJSONObject).GetJsonStringValue(0);
+        vParamValue := (MSGParameters.Items[I] as TJSONObject).GetJsonValue(0).Value;
+        Result.Parameters.Add(vParamName, vParamValue);
+      end;
+      Result.Wait := SameText(MSGJSONObject.GetValue('wait', ''), 'true'); MSGJSONObject.Free;
+    end;
+    Result.RawMessage := AMessage;
+  except end;
+end;
+
+procedure TPrismServerTCP.RemoveEscapeFromFileURL(var vFileName: string);
+const EscapeChars: array[0..32] of string = ('%20','%21','%22','%23','%24','%25','%26','%27','%28','%29','%2A','%2B','%2C','%2D','%2E','%2F','%3A','%3B','%3C','%3D','%3E','%3F','%40','%5B','%5C','%5D','%5E','%5F','%60','%7B','%7C','%7D','%7E');
+var i: Integer;
+begin for i := 0 to High(EscapeChars) do vFileName := StringReplace(vFileName, EscapeChars[i], Char(StrToInt('$'+Copy(EscapeChars[i],2,2))), [rfReplaceAll]); vFileName := StringReplace(vFileName, '%2B', ' ', [rfReplaceAll]); end;
+
+procedure TPrismServerTCP.InsertEscapeToFileURL(var vFileName: string);
+const EscapeChars: array[0..32] of string = ('%20','%21','%22','%23','%24','%25','%26','%27','%28','%29','%2A','%2B','%2C','%2D','%2E','%2F','%3A','%3B','%3C','%3D','%3E','%3F','%40','%5B','%5C','%5D','%5E','%5F','%60','%7B','%7C','%7D','%7E');
+var i: Integer;
+begin for i := 0 to High(EscapeChars) do vFileName := StringReplace(vFileName, Char(StrToInt('$'+Copy(EscapeChars[i],2,2))), EscapeChars[i], [rfReplaceAll]); vFileName := StringReplace(vFileName, ' ', '%2B', [rfReplaceAll]); end;
+
+function TPrismServerTCP.GetAppBase: string; begin Result := FAppBase; end;
+procedure TPrismServerTCP.SetAppBase(const Value: string);
+begin if FAppBase = '/' then begin FAppBase := Value; if FAppBase.EndsWith('/') then FAppBase := Copy(FAppBase,1,Length(FAppBase)-1); if not FAppBase.StartsWith('/') then FAppBase := '/'+FAppBase; end; end;
+
+function TPrismServerTCP.MimesType: TPrismServerFileExtensions; begin Result := FMimesType; end;
+
+procedure TPrismServerTCP.OnSessionChange(EnumChangeType: TValue; varSession: TValue);
+begin end;
+
+procedure TPrismServerTCP.Exec_RouteAuth(varPrismHTTPRequest: TValue);
+var xPrismRequest: TPrismHTTPRequest;
+begin try xPrismRequest := TPrismHTTPRequest(varPrismHTTPRequest.AsObject); except end; FreeAndNil(xPrismRequest); end;
+
+{ TWebSocketIOHandlerHelper }
+
+constructor TWebSocketIOHandlerHelper.CreateFromCrtSocket(aSock: TCrtSocket);
+begin inherited Create; FSock := aSock; end;
+
+function TWebSocketIOHandlerHelper.ReadByte: Byte;
+begin Result := 0; if Assigned(FSock) then FSock.SockInRead(@Result, 1, true); end;
+
+function TWebSocketIOHandlerHelper.ReadBytes: TArray<byte>;
+var
+  b0, b1, l: Byte;
+  b: array [0..7] of Byte;
+  i, DecodedSize: {$IFNDEF FPC}Int64{$ELSE}SizeInt{$ENDIF};
+  Mask: array [0..3] of Byte;
+  Fin, Masked, MessageComplete: Boolean;
+  Opcode: Byte;
+  FrameData: TArray<byte>;
+begin
+  Result := [];
+  MessageComplete := False;
+  try
+    while not MessageComplete do
+    begin
+      b0 := ReadByte;
+      Fin := (b0 and $80) <> 0;
+      Opcode := b0 and $0F;
+      b1 := ReadByte;
+      Masked := (b1 and $80) <> 0;
+      l := b1 and $7F;
+      case l of
+        126:
+          begin
+            b[1]:=ReadByte; b[0]:=ReadByte; b[2]:=0; b[3]:=0; b[4]:=0; b[5]:=0; b[6]:=0; b[7]:=0;
+            DecodedSize := PInt64(@b)^;
+          end;
+        127:
+          begin
+            b[7]:=ReadByte; b[6]:=ReadByte; b[5]:=ReadByte; b[4]:=ReadByte; b[3]:=ReadByte; b[2]:=ReadByte; b[1]:=ReadByte; b[0]:=ReadByte;
+            DecodedSize := PInt64(@b)^;
+          end;
+        else
+          DecodedSize := l;
+      end;
+      if Masked then
+      begin
+        Mask[0]:=ReadByte; Mask[1]:=ReadByte; Mask[2]:=ReadByte; Mask[3]:=ReadByte;
+      end;
+      FrameData := [];
+      if DecodedSize > 0 then
+      begin
+        SetLength(FrameData, DecodedSize);
+        if Assigned(FSock) then FSock.SockInRead(@FrameData[0], DecodedSize, true);
+        if Masked then
+          for i := 0 to DecodedSize-1 do
+            FrameData[i] := FrameData[i] xor Mask[i mod 4];
+      end;
+      case Opcode of
+        $0, $1, $2:
+          begin
+            Result := Result + FrameData;
+            if Fin then
+              MessageComplete := True;
+          end;
+        $8:
+          begin
+            Result := [];
+            MessageComplete := True;
+          end;
+        $9, $A: ;
+      else
+        ;
+      end;
+    end;
+  except
+    Result := [];
+  end;
+end;
+
+function TWebSocketIOHandlerHelper.ReadString: string;
+var Bytes: TBytes;
+begin try Bytes := ReadBytes; if (Assigned(Bytes)) and (Length(Bytes)>0) then Result := TEncoding.UTF8.GetString(Bytes) else Result := ''; except Result := ''; end; end;
+
+procedure TWebSocketIOHandlerHelper.WriteBytes(RawData: TArray<byte>);
+var Msg: TArray<byte>;
+begin
+  Msg := [$81];
+  if Length(RawData) <= 125 then Msg := Msg + [Length(RawData)]
+  else if (Length(RawData) >= 126) and (Length(RawData) <= 65535) then Msg := Msg+[126,(Length(RawData) shr 8) and 255,Length(RawData) and 255]
+  else Msg := Msg+[127,(int64(Length(RawData)) shr 56) and 255,(int64(Length(RawData)) shr 48) and 255,(int64(Length(RawData)) shr 40) and 255,(int64(Length(RawData)) shr 32) and 255,(Length(RawData) shr 24) and 255,(Length(RawData) shr 16) and 255,(Length(RawData) shr 8) and 255,Length(RawData) and 255];
+  Msg := Msg + RawData;
+  try if Assigned(FSock) then FSock.SndLow(@Msg[0], Length(Msg)); except end;
+end;
+
+procedure TWebSocketIOHandlerHelper.WriteString(const str: string);
+begin WriteBytes(TArray<byte>(TEncoding.UTF8.GetBytes(str))); end;
+{$ENDIF} // USE_MORMOT2
 
 end.

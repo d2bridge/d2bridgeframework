@@ -36,7 +36,12 @@ interface
 
 uses
   Classes, SysUtils, DateUtils, Generics.Collections,
+{$IFDEF USE_MORMOT2}
+  mormot.core.base, mormot.net.sock,
+  Prism.MormotCompat,
+{$ELSE}
   IdIOHandler,
+{$ENDIF}
   D2Bridge.JSON, Prism.Util,
   Prism.Types;
 
@@ -103,7 +108,7 @@ type
    TooManyConnFromIP: boolean;
    InternalRequest: Boolean;
    Route: TObject;
-   IOHandler: TIdIOHandler;
+    IOHandler: {$IFDEF USE_MORMOT2}TCrtSocket{$ELSE}TIdIOHandler{$ENDIF};
 
    constructor Create;
    destructor Destroy; override;
@@ -420,10 +425,16 @@ var
 begin
  try
   if FBody = '' then
-   if TryStrToInt(ContentLength, vContentLength) then
-    if Assigned(IOHandler) then
+  begin
+   if Assigned(IOHandler) then
+   begin
+    if TryStrToInt(ContentLength, vContentLength) then
      if vContentLength > 0 then
       FBody:= PrismBaseClass.PrismServer.ReadBodyStringFromData(IOHandler, vContentLength);
+   end
+   else if Content <> '' then
+    FBody:= Content;
+  end;
  except
  end;
 
