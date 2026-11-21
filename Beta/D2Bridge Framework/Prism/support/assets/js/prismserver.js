@@ -30,9 +30,9 @@ function PrismServerFunctions() {
             }
 
             if (connectionInfo.pathPrefix !== "/") {
-                prismwsresponse = new WebSocket(connectionInfo.protocol + '://' + connectionInfo.host + ':' + connectionInfo.port + '/websocket' + connectionInfo.pathPrefix + '/connectionresponseparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
+                prismwsresponse = new WebSocket(connectionInfo.protocol + '://' + connectionInfo.host + ':' + connectionInfo.port + '/websocket' + connectionInfo.pathPrefix + '/connectionresponseparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()), 'd2bridge');
             } else {
-                prismwsresponse = new WebSocket(connectionInfo.protocol + '://' + connectionInfo.host + ':' + connectionInfo.port + '/websocket' + '/connectionresponseparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()));
+                prismwsresponse = new WebSocket(connectionInfo.protocol + '://' + connectionInfo.host + ':' + connectionInfo.port + '/websocket' + '/connectionresponseparams?token=' + connectionInfo.token + '&prismsession=' + connectionInfo.prismsession + '&channelname=' + connectionInfo.channelname + '&d2dockerinstance=' + connectionInfo.d2dockerinstance + '&viewportinfo=' + encodeURIComponent(D2BridgeGetViewportInfo()), 'd2bridge');
             }
 
             prismwsresponse.onopen = () => {

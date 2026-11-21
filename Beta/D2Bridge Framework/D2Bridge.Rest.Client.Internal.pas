@@ -68,7 +68,11 @@ var
  vRestRequest: TD2BridgeRestRequest;
 begin
  vResponse:= TPrismHTTPResponse.Create;
- vRequest:= PrismBaseClass.PrismServer.ParseHeaders(nil, ARestRequest.RawRequest);
+ {$IFDEF FPC}
+  vRequest:= PrismBaseClass.PrismServer.ParseHeaders(TObject(nil), ARestRequest.RawRequest);
+ {$ELSE}
+  vRequest:= PrismBaseClass.PrismServer.ParseHeaders(nil, ARestRequest.RawRequest);
+ {$ENDIF}
 
  if Assigned(vRequest.Route) and
     ((vRequest.Route as TD2BridgeRestRoute).RequireJWT) and (not vRequest.JWTvalid) then //Route not Authenticate

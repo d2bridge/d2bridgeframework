@@ -35,11 +35,23 @@ unit Prism.Server.Thread.TCP;
 interface
 
 Uses
- Classes, SysUtils, Prism.Server.TCP, IdSchedulerOfThreadPool,
-{$IFDEF MSWINDOWS}
-  Windows,
+  Classes, SysUtils, Prism.Server.TCP
+{$IFDEF USE_MORMOT2}
+  , Prism.MormotCompat, mormot.net.sock, mormot.net.server
+{$ELSE}
+  , IdSchedulerOfThreadPool
 {$ENDIF}
- D2Bridge.DebugUtils, IdSSLOpenSSL, SyncObjs;
+  ,
+{$IFDEF MSWINDOWS}
+   Windows,
+{$ENDIF}
+  D2Bridge.DebugUtils
+{$IFDEF USE_MORMOT2}
+  , mormot.core.base
+{$ELSE}
+  , IdSSLOpenSSL
+{$ENDIF}
+  , SyncObjs;
 
 type
  TPrismThreadServerTCP = class(TThread)
@@ -60,7 +72,7 @@ type
    procedure StartServer;
    procedure StopServer;
 
-   function SSLOptions: TIdSSLOptions;
+   function SSLOptions: {$IFDEF USE_MORMOT2}TMormotTlsConfig{$ELSE}TIdSSLOptions{$ENDIF};
 
    function PrismServerTCP: TPrismServerTCP;
 
@@ -73,9 +85,11 @@ type
 implementation
 
 Uses
- idGlobal,
- Prism.BaseClass,
- D2Bridge.ServerControllerBase;
+{$IFNDEF USE_MORMOT2}
+  idGlobal,
+{$ENDIF}
+  Prism.BaseClass,
+  D2Bridge.ServerControllerBase;
 
 { TPrismThreadServerTCP }
 
@@ -89,18 +103,26 @@ begin
  //Priority:= tpIdle;
  FreeOnTerminate:= false;
 
- FPrismServerTCP:= TPrismServerTCP.Create;
+  FPrismServerTCP:= TPrismServerTCP.Create;
+  PrismServer := FPrismServerTCP; // assign global reference
 end;
 
 procedure TPrismThreadServerTCP.CreatePrismServerTCP;
 begin
  {$IFDEF D2BRIDGE}
- if not Assigned(FPrismServerTCP) then
-  FPrismServerTCP:= TPrismServerTCP.Create;
+  if not Assigned(FPrismServerTCP) then
+   FPrismServerTCP:= TPrismServerTCP.Create;
+
+  PrismServer := FPrismServerTCP; // assign global reference
+
+{$IFDEF USE_MORMOT2}
+ // mORMot2: configura porta e SSL, StartServer já cria o THttpServer
+ FPrismServerTCP.StartServer(FPort, PrismBaseClass.Options.SSL);
+{$ELSE}
+ // Indy: configura servidor + thread pool + SSL
  FPrismServerTCP.DefaultPort:= FPort;
  FPrismServerTCP.MaxConnections:= MaxInt;
  FPrismServerTCP.ListenQueue:= 2048;
-
  FPrismServerTCP.ReuseSocket:= rsTrue;
 
  //Pool
@@ -113,6 +135,7 @@ begin
   TIdSchedulerOfThreadPool(FPrismServerTCP.Scheduler).Init;
  end;
 {$ENDIF}
+{$ENDIF}
 
  FPrismServerTCP.OnGetHTML:= PrismBaseClass.PrismServerHTML.GetHTML;
  FPrismServerTCP.OnReceiveMessage := PrismBaseClass.PrismServerHTML.ReceiveMessage;
@@ -122,6 +145,7 @@ begin
  FPrismServerTCP.OnDownloadData:= PrismBaseClass.PrismServerHTML.DownloadData;
  FPrismServerTCP.OnParseFile:= PrismBaseClass.PrismServerHTML.ParseFile;
 
+{$IFNDEF USE_MORMOT2}
  {$REGION 'SSL'}
  if PrismBaseClass.Options.SSL then
  begin
@@ -132,6 +156,7 @@ begin
   FPrismServerTCP.IOHandler := FPrismServerTCP.OpenSSL;
  end;
  {$ENDREGION}
+{$ENDIF}
 
  {$ENDIF}
 end;
@@ -141,74 +166,84 @@ begin
  if Assigned(FPrismServerTCP) then
  begin
   FPrismServerTCP.CloseAllConnection;
+{$IFNDEF USE_MORMOT2}
   FPrismServerTCP.Bindings.Clear;
+{$ENDIF}
   FPrismServerTCP.Free;
  end;
 end;
 
 procedure TPrismThreadServerTCP.Execute;
 var
- vStarted : Boolean;
+  vStarted : Boolean;
 begin
- try
-  vStarted:= false;
+  try
+   vStarted:= false;
 
   while (not Terminated) do
   begin
    if FStart <> vStarted then
    begin
-    if FStart then
-    begin
-     CreatePrismServerTCP;
-
-{$IFDEF D2DOCKER}
-     D2BridgeServerControllerBase.D2BridgeManager.API.D2Docker.DoServerStarted;
-{$ENDIF}
-
-     FPrismServerTCP.Bindings.Clear;
-
-     with FPrismServerTCP.Bindings.Add do
+     if FStart then
      begin
-       IP := '0.0.0.0';
-       Port := FPort;
-       ReuseSocket := rsTrue; // <---- Aqui está o SO_REUSEADDR
-     end;
+      CreatePrismServerTCP;
 
-     //FPrismServerTCP.DefaultPort := FPort;
-
-     try
-      FPrismServerTCP.Active := FStart;
-     except
-      on E: Exception do
-      begin
-       try
 {$IFDEF D2DOCKER}
-         PrismBaseClass.API.D2Docker.DoLogException('Server cannot Start on port ' + IntToStr(FPort) + ' ' + E.Message)
-{$ELSE}
-         raise Exception.Create('Server cannot Start on port ' + IntToStr(FPort) + ' ' + E.Message);
+      D2BridgeServerControllerBase.D2BridgeManager.API.D2Docker.DoServerStarted;
 {$ENDIF}
-       except
-       end;
 
-       if not IsDebuggerPresent then
-        Sleep(10000);
+{$IFDEF USE_MORMOT2}
+      // mORMot2: StartServer já foi chamado em CreatePrismServerTCP,
+      // aguarda confirmação
+      FPrismServerTCP.StartServer(FPort, PrismBaseClass.Options.SSL);
+{$ELSE}
+      FPrismServerTCP.Bindings.Clear;
 
-       {$IFDEF FPC}
-       Halt(0);
-       {$ENDIF}
-       {$IFDEF MSWINDOWS}
-       ExitProcess(0);
-       {$ELSE}
-       Halt(0);
-       {$ENDIF}
+      with FPrismServerTCP.Bindings.Add do
+      begin
+        IP := '0.0.0.0';
+        Port := FPort;
+        ReuseSocket := rsTrue;
       end;
-     end;
-    end else
-    begin
-     FPrismServerTCP.Active := False;
 
-     DestroyPrismServerTCP;
-    end;
+      try
+       FPrismServerTCP.Active := FStart;
+      except
+       on E: Exception do
+       begin
+        try
+{$IFDEF D2DOCKER}
+          PrismBaseClass.API.D2Docker.DoLogException('Server cannot Start on port ' + IntToStr(FPort) + ' ' + E.Message)
+{$ELSE}
+          raise Exception.Create('Server cannot Start on port ' + IntToStr(FPort) + ' ' + E.Message);
+{$ENDIF}
+        except
+        end;
+
+        if not IsDebuggerPresent then
+         Sleep(10000);
+
+        {$IFDEF FPC}
+        Halt(0);
+        {$ENDIF}
+        {$IFDEF MSWINDOWS}
+        ExitProcess(0);
+        {$ELSE}
+        Halt(0);
+        {$ENDIF}
+       end;
+      end;
+{$ENDIF}
+     end else
+     begin
+{$IFDEF USE_MORMOT2}
+      FPrismServerTCP.StopServer;
+{$ELSE}
+      FPrismServerTCP.Active := False;
+{$ENDIF}
+
+      DestroyPrismServerTCP;
+     end;
 
     if FStart <> vStarted then
      FConnectEvent.SetEvent;
@@ -240,37 +275,46 @@ begin
  FPort:= Value;
 end;
 
-function TPrismThreadServerTCP.SSLOptions: TIdSSLOptions;
+function TPrismThreadServerTCP.SSLOptions: {$IFDEF USE_MORMOT2}TMormotTlsConfig{$ELSE}TIdSSLOptions{$ENDIF};
 begin
+{$IFDEF USE_MORMOT2}
+ // mORMot2: return TLS config record
+ Result := FPrismServerTCP.TLSContext;
+{$ELSE}
  result:= FPrismServerTCP.OpenSSL.SSLOptions;
+{$ENDIF}
 end;
 
 function TPrismThreadServerTCP.Active: boolean;
 begin
  Result:= false;
-
  if Assigned(FPrismServerTCP) then
- begin
   result:= FPrismServerTCP.Active;
- end;
-
 end;
 
 procedure TPrismThreadServerTCP.StartServer;
 begin
- FStart:= true;
+  FStart:= true;
 
  FConnectEvent:= TEvent.Create(nil, true, false, '');
  FConnectEvent.WaitFor(INFINITE);
  FConnectEvent.Free;
 
+{$IFDEF USE_MORMOT2}
+ if not FPrismServerTCP.Active then
+ begin
+  FPrismServerTCP := nil;
+  FStart:= false;
+  Abort;
+ end;
+{$ELSE}
  if not FPrismServerTCP.Active then
  begin
   FPrismServerTCP.Free;
   FStart:= false;
   Abort;
  end;
-
+{$ENDIF}
 end;
 
 procedure TPrismThreadServerTCP.StopServer;
@@ -283,12 +327,20 @@ begin
   FConnectEvent.WaitFor(INFINITE);
   FConnectEvent.Free;
 
+{$IFDEF USE_MORMOT2}
+  if FPrismServerTCP.Active then
+  begin
+   FStart:= true;
+   Abort;
+  end;
+{$ELSE}
   if FPrismServerTCP.Active then
   begin
    FPrismServerTCP.Free;
    FStart:= true;
    Abort;
   end;
+{$ENDIF}
  end;
 end;
 

@@ -204,6 +204,7 @@ var
  vParams : Tstringlist;
  vResponse : {$IFNDEF FPC}IHTTPresponse{$ELSE}TStringStream{$ENDIF};
  vResponseJSON: TJSONObject;
+ vjson : String;
 begin
  try
   vPrismSession:= PrismSession;
@@ -249,6 +250,8 @@ begin
     vResponseContent:= vResponse.ContentAsString;
 {$ELSE}
     vHttp.AllowRedirect := true;
+
+   vjson := vParams.Text;
 
     vResponse := TStringStream.Create('');
 

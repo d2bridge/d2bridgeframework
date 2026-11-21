@@ -36,6 +36,12 @@ interface
 
 uses
   Classes, SysUtils, D2Bridge.JSON, StrUtils, Variants, DateUtils,
+  {$IFDEF FPC}
+     fphttpclient,
+  {$ELSE}
+    System.NetEncoding,
+  {$ENDIF}
+
 {$IFDEF HAS_UNIT_SYSTEM_UITYPES}
   System.UITypes,
 {$ENDIF}
@@ -93,6 +99,7 @@ function DataFieldValueFromHTMLElement(AValue: String; APrismFieldType: TPrismFi
 function FormatOfFloat(AFormatSettings: TFormatSettings): string; overload;
 function FormatOfFloat(AFormatSettings: TFormatSettings; ADecimalPlaces: integer): string; overload;
 function FormatOfCurrency(AFormatSettings: TFormatSettings; FUseCurSymbol: boolean = false): string;
+
 
 implementation
 
@@ -1211,5 +1218,8 @@ begin
   Result:= IfThen(FUseCurSymbol, AFormatSettings.CurrencyString + ' ') + '0'+IfThen(AFormatSettings.CurrencyDecimals > 0, '.'+vDecimalPlaces);
 
 end;
+
+
+
 
 end.
